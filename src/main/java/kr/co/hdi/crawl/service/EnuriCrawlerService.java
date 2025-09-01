@@ -1,6 +1,7 @@
 package kr.co.hdi.crawl.service;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
+import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class EnuriCrawlerService {
 
     private WebDriver driver;
@@ -58,7 +60,6 @@ public class EnuriCrawlerService {
     }
 
     private void getProductData() {
-
         getProductInfo();
         getProductImage();
     }
@@ -69,7 +70,7 @@ public class EnuriCrawlerService {
         // 1. 제품 이름
         WebElement prodSum = driver.findElement(By.cssSelector("div.vip-summ__prod"));
         String productName = prodSum.findElement(By.cssSelector("div.vip__tx--title")).getText().trim();
-//        System.out.println("프로덕트 이름 : " + productName);
+        log.info("프로덕트 이름: {}", productName);
 
         // 2. 상품 정보
         WebElement specTable = driver.findElement(By.id("enuri_spec_table"));
@@ -92,7 +93,7 @@ public class EnuriCrawlerService {
                 }
             }
         }
-//        specItems.forEach((k, v) -> System.out.println(k + " : " + v));
+        specItems.forEach((k, v) -> log.info("{} : {}", k, v));
     }
 
     private void getProductImage() {

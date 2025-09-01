@@ -1,23 +1,37 @@
 package kr.co.hdi.crawl.service;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
+import kr.co.hdi.crawl.domain.Product;
+import kr.co.hdi.crawl.domain.ProductImage;
+import kr.co.hdi.crawl.repository.ProductImageRepository;
+import kr.co.hdi.crawl.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class EnuriCrawlerService {
 
     private WebDriver driver;
     private final String webBaseUrl = "https://www.enuri.com";
+
+    private final ProductRepository productRepository;
+    private final ProductImageRepository productImageRepository;
 
     public void startCrawling(String webUrl) {
 
@@ -37,6 +51,17 @@ public class EnuriCrawlerService {
 
         WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
+
+        // user agent 설정
+        String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+        options.addArguments("--user-agent=" + userAgent);
+        // 창이 뜨지 않도록 headless 모드 설정
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--window-size=1920,1080");
+        options.addArguments("lang=ko_KR");
+        options.addArguments("--disable-blink-features=AutomationControlled");
+
         driver = new ChromeDriver(options);
     }
 
@@ -58,26 +83,42 @@ public class EnuriCrawlerService {
     }
 
     private void getProductData() {
-
-        getProductInfo();
-        getProductImage();
+        Map<String, String> productInfo = getProductInfo();
+        List<String> productImages = getProductImage();
+        saveProduct(productInfo, productImages);
     }
 
-    // TODO : 필요한 정보 파싱 필요
-    private void getProductInfo() {
+    private void saveProduct(Map<String, String> productInfo, List<String> productImages) {
+        Product product = Product.from(productInfo);
+        productRepository.save(product);
+
+        List<ProductImage> images = ProductImage.from(product, productImages);
+        productImageRepository.saveAll(images);
+    }
+
+    private Map<String, String> getProductInfo() {
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         // 1. 제품 이름
-        WebElement prodSum = driver.findElement(By.cssSelector("div.vip-summ__prod"));
+        WebElement prodSum = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.vip-summ__prod")));
         String productName = prodSum.findElement(By.cssSelector("div.vip__tx--title")).getText().trim();
-//        System.out.println("프로덕트 이름 : " + productName);
+        log.info("프로덕트 이름: {}", productName);
 
         // 2. 상품 정보
-        WebElement specTable = driver.findElement(By.id("enuri_spec_table"));
+        WebElement specTable = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("enuri_spec_table")));
         List<WebElement> dts = specTable.findElements(By.tagName("dt"));
         List<WebElement> dds = specTable.findElements(By.tagName("dd"));
 
         Map<String, String> specItems = new HashMap<>();
 
+        // 가격
+        WebElement prodPrice = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.prodminprice__tx--price")));
+        String price = prodPrice.findElement(By.cssSelector("strong")).getText().trim();
+
+        specItems.put("가격", price);
+
+        specItems.put("프로덕트 이름", productName);
         for (int i = 0; i < dts.size(); i++) {
 
             WebElement dd = dds.get(i);
@@ -92,10 +133,11 @@ public class EnuriCrawlerService {
                 }
             }
         }
-//        specItems.forEach((k, v) -> System.out.println(k + " : " + v));
+        specItems.forEach((k, v) -> log.info("{} : {}", k, v));
+        return specItems;
     }
 
-    private void getProductImage() {
+    private List<String> getProductImage() {
         List<String> imageUrls = new ArrayList<>();
 
         WebElement thumbList = driver.findElement(By.cssSelector("ul.thum__list"));
@@ -103,10 +145,12 @@ public class EnuriCrawlerService {
 
         for (WebElement img : images) {
             String url = img.getAttribute("src");
-            if (url != null && !url.isEmpty()) {
+            if (url != null && !url.isEmpty() && !url.contains("youtube.com")) {
                 imageUrls.add(url);
+                log.info("이미지 URL: {}", url);
             }
         }
+        return imageUrls;
         // TODO: S3 에 저장
 //        for(String imageUrl : imageUrls) {
 //            System.out.println(imageUrl);

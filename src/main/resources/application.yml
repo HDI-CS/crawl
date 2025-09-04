@@ -23,3 +23,4 @@ spring:
 
 etc:
   base-url: ${BASE_URL}
+  local-image-path: /Users/leo/workspace/hdi_images

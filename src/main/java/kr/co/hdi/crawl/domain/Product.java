@@ -28,6 +28,7 @@ public class Product {
     private String material;
     private String size;
     private String weight;
+    private String referenceUrl;
 
     public static Product from(Map<String, String> productInfo) {
         return Product.builder()

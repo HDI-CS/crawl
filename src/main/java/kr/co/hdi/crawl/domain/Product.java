@@ -30,7 +30,7 @@ public class Product {
     private String weight;
     private String referenceUrl;
 
-    public static Product from(Map<String, String> productInfo) {
+    public static Product from(Map<String, String> productInfo, String referenceUrl) {
         return Product.builder()
                 .productName(productInfo.get("프로덕트 이름"))
                 .modelName("N/A")
@@ -38,16 +38,18 @@ public class Product {
                 .material("N/A")
                 .size(productInfo.get("크기"))
                 .weight(productInfo.get("무게"))
+                .referenceUrl(referenceUrl)
                 .build();
     }
 
     @Builder(access = PRIVATE)
-    private Product(String productName, String modelName, String price, String material, String size, String weight) {
+    private Product(String productName, String modelName, String price, String material, String size, String weight, String referenceUrl) {
         this.productName = productName;
         this.modelName = modelName;
         this.price = price;
         this.material = material;
         this.size = size;
         this.weight = weight;
+        this.referenceUrl = referenceUrl;
     }
 }

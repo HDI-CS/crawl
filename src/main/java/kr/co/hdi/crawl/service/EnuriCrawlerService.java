@@ -54,10 +54,12 @@ public class EnuriCrawlerService {
             initDriver();
             driver.get(webUrl);
 
+//            selectCleanerFilter();
+
             List<String> urls = getProductUrl();
             for (String url : urls) {
                 driver.get(webBaseUrl + url);
-                getProductData();
+                getProductData(webBaseUrl + url);
             }
         } finally {
             driver.quit();
@@ -99,18 +101,18 @@ public class EnuriCrawlerService {
         return urls;
     }
 
-    private void getProductData() {
+    private void getProductData(String productUrl) {
         Map<String, String> productInfo = getProductInfo();
         List<String> productImages = getProductImage();
         List<String> detailImage = getProductDetailImage();
-        saveProduct(productInfo, productImages, detailImage);
+        saveProduct(productInfo, productImages, detailImage, productUrl);
     }
 
 
 
     @Transactional
-    protected void saveProduct(Map<String, String> productInfo, List<String> productImages, List<String> detailImages) {
-        Product product = Product.from(productInfo);
+    protected void saveProduct(Map<String, String> productInfo, List<String> productImages, List<String> detailImages, String productUrl) {
+        Product product = Product.from(productInfo, productUrl);
         productRepository.save(product);
 
         String productFolderPath = createProductFolder(product.getId(), product.getProductName());
@@ -372,5 +374,28 @@ public class EnuriCrawlerService {
             return ".jpg";
         }
     }
+
+    /**
+     * '핸디스틱청소기' 필터를 선택하고 상품 목록이 갱신될 때까지 대기합니다.
+     */
+    private void selectCleanerFilter() {
+        final By LOADER_LOCATOR = By.cssSelector("div.e-loading");
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        try {
+            WebElement filterLabel = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("label[title='핸디스틱청소기']")));
+            filterLabel.click();
+            log.info("'핸디스틱청소기' 필터를 클릭했습니다.");
+
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(LOADER_LOCATOR));
+            log.info("상품 목록이 성공적으로 갱신되었습니다.");
+
+        } catch (Exception e) {
+            log.error("필터 선택 또는 목록 갱신 대기 중 오류 발생", e);
+            throw new RuntimeException("필터링에 실패하여 크롤링을 중단합니다.", e);
+        }
+    }
+
 }
 

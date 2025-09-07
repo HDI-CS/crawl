@@ -1,30 +1,26 @@
 package kr.co.hdi.crawl.controller;
 
-import jakarta.websocket.server.PathParam;
-import kr.co.hdi.crawl.service.EnuriCrawlerService;
-import kr.co.hdi.crawl.service.OliveCrawlerService;
+import kr.co.hdi.crawl.dto.ProductType;
+import kr.co.hdi.crawl.dto.SiteType;
+import kr.co.hdi.crawl.dto.request.CrawlRequest;
+import kr.co.hdi.crawl.service.CrawlService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/crawl")
 public class CrawlController {
 
-    private final EnuriCrawlerService enuriCrawlerService;
-    private final OliveCrawlerService oliveCrawlerService;
+    private final CrawlService crawlService;
 
     @PostMapping
-    public void crawlProduct(@PathParam("url") String url) {
-
-        enuriCrawlerService.startCrawling(url);
+    public void crawlProduct(
+            @RequestParam SiteType siteType,
+            @RequestParam ProductType productType,
+            @RequestBody CrawlRequest request
+    ) {
+        crawlService.startCrawlingAndSave(siteType, productType, request.url());
     }
 
-    @PostMapping("/brand")
-    public void getBrandNameInOliveYoung(@PathParam("url") String url) {
-
-        oliveCrawlerService.startCrawling(url);
-    }
 }

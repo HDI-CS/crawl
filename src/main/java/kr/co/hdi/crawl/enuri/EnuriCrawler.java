@@ -1,6 +1,6 @@
-package kr.co.hdi.crawl.service;
+package kr.co.hdi.crawl.enuri;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
+import kr.co.hdi.crawl.AbstractBaseCrawler;
 import kr.co.hdi.crawl.domain.Product;
 import kr.co.hdi.crawl.domain.ProductImage;
 import kr.co.hdi.crawl.repository.ProductImageRepository;
@@ -8,14 +8,10 @@ import kr.co.hdi.crawl.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.FileOutputStream;
@@ -34,57 +30,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Service
 @Slf4j
 @RequiredArgsConstructor
-public class EnuriCrawlerService {
+public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
-    private WebDriver driver;
-    private static final String webBaseUrl = "https://www.enuri.com";
+    protected static final String webBaseUrl = "https://www.enuri.com";
 
-    private final ProductRepository productRepository;
-    private final ProductImageRepository productImageRepository;
+    protected final ProductRepository productRepository;
+    protected final ProductImageRepository productImageRepository;
 
     @Value("${etc.local-image-path:./images}")
-    private String imageStoragePath;
+    protected String imageStoragePath;
 
-    public void startCrawling(String webUrl) {
-
-        try {
-            initDriver();
-            driver.get(webUrl);
-
-//            selectCleanerFilter();
-
-            List<String> urls = getProductUrl();
-            for (String url : urls) {
-                driver.get(webBaseUrl + url);
-                getProductData(webBaseUrl + url);
-            }
-        } finally {
-            driver.quit();
+    @Override
+    protected void crawl() {
+        List<String> urls = getProductUrl();
+        for (String url : urls) {
+            driver.get(webBaseUrl + url);
+            getProductData(webBaseUrl + url);
         }
     }
 
-    private void initDriver() {
-
-        WebDriverManager.chromedriver().setup();
-        ChromeOptions options = new ChromeOptions();
-
-        // user agent 설정
-        String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
-        options.addArguments("--user-agent=" + userAgent);
-        // 창이 뜨지 않도록 headless 모드 설정
-        options.addArguments("--headless");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        options.addArguments("lang=ko_KR");
-        options.addArguments("--disable-blink-features=AutomationControlled");
-
-        driver = new ChromeDriver(options);
-    }
-
-    private List<String> getProductUrl() {
+    protected List<String> getProductUrl() {
 
         List<String> urls = new ArrayList<>();
 
@@ -101,13 +68,12 @@ public class EnuriCrawlerService {
         return urls;
     }
 
-    private void getProductData(String productUrl) {
+    protected void getProductData(String productUrl) {
         Map<String, String> productInfo = getProductInfo();
         List<String> productImages = getProductImage();
         List<String> detailImage = getProductDetailImage();
         saveProduct(productInfo, productImages, detailImage, productUrl);
     }
-
 
 
     @Transactional
@@ -127,7 +93,7 @@ public class EnuriCrawlerService {
         productImageRepository.saveAll(images);
     }
 
-    private Map<String, String> getProductInfo() {
+    protected Map<String, String> getProductInfo() {
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -168,7 +134,7 @@ public class EnuriCrawlerService {
         return specItems;
     }
 
-    private List<String> getProductImage() {
+    protected List<String> getProductImage() {
         List<String> imageUrls = new ArrayList<>();
 
         WebElement thumbList = driver.findElement(By.cssSelector("ul.thum__list"));
@@ -256,7 +222,7 @@ public class EnuriCrawlerService {
     /**
      * 상품별 메인 폴더 생성
      */
-    private String createProductFolder(Long productId, String productName) {
+    protected String createProductFolder(Long productId, String productName) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         // 파일명에 사용할 수 없는 문자 제거
@@ -372,28 +338,6 @@ public class EnuriCrawlerService {
             return ".jpg";
         } catch (Exception e) {
             return ".jpg";
-        }
-    }
-
-    /**
-     * '핸디스틱청소기' 필터를 선택하고 상품 목록이 갱신될 때까지 대기합니다.
-     */
-    private void selectCleanerFilter() {
-        final By LOADER_LOCATOR = By.cssSelector("div.e-loading");
-
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-
-        try {
-            WebElement filterLabel = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("label[title='핸디스틱청소기']")));
-            filterLabel.click();
-            log.info("'핸디스틱청소기' 필터를 클릭했습니다.");
-
-            wait.until(ExpectedConditions.invisibilityOfElementLocated(LOADER_LOCATOR));
-            log.info("상품 목록이 성공적으로 갱신되었습니다.");
-
-        } catch (Exception e) {
-            log.error("필터 선택 또는 목록 갱신 대기 중 오류 발생", e);
-            throw new RuntimeException("필터링에 실패하여 크롤링을 중단합니다.", e);
         }
     }
 

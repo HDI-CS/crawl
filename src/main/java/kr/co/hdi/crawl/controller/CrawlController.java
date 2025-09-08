@@ -16,8 +16,8 @@ public class CrawlController {
 
     @PostMapping
     public void crawlProduct(
-            @RequestParam SiteType siteType,
-            @RequestParam ProductType productType,
+            @RequestParam("site") SiteType siteType,
+            @RequestParam("product") ProductType productType,
             @RequestBody CrawlRequest request
     ) {
         crawlService.startCrawlingAndSave(siteType, productType, request.url());

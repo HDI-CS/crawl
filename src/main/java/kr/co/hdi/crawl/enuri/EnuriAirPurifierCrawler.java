@@ -4,13 +4,13 @@ import kr.co.hdi.crawl.dto.CrawlTarget;
 import kr.co.hdi.crawl.dto.ProductType;
 import kr.co.hdi.crawl.dto.SiteType;
 import kr.co.hdi.crawl.repository.ProductImageRepository;
-import kr.co.hdi.crawl.repository.ProductRepository;
+import kr.co.hdi.crawl.repository.ProductRepositoryCustom;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EnuriAirPurifierCrawler extends EnuriCrawler{
 
-    public EnuriAirPurifierCrawler(ProductRepository productRepository, ProductImageRepository productImageRepository) {
+    public EnuriAirPurifierCrawler(ProductRepositoryCustom productRepository, ProductImageRepository productImageRepository) {
         super(productRepository, productImageRepository);
     }
 
@@ -20,4 +20,8 @@ public class EnuriAirPurifierCrawler extends EnuriCrawler{
                 target.productType() == ProductType.AIR_PURIFIER;
     }
 
+    @Override
+    protected String getCategoryFolderName() {
+        return "공기청정기";
+    }
 }

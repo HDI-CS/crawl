@@ -7,7 +7,6 @@ import kr.co.hdi.crawl.dto.SiteType;
 import kr.co.hdi.crawl.factory.CrawlerFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -15,7 +14,6 @@ public class CrawlService {
 
     private final CrawlerFactory crawlerFactory;
 
-    @Transactional
     public void startCrawlingAndSave(SiteType siteType, ProductType productType, String url) {
 
         CrawlTarget target = new CrawlTarget(siteType, productType);

@@ -31,6 +31,8 @@ public abstract class AbstractBaseCrawler implements Crawler{
         try {
             initDriver();
             driver.get(webUrl);
+
+            applyCustomLogic();
             crawl();
         } finally {
             driver.quit();
@@ -42,5 +44,12 @@ public abstract class AbstractBaseCrawler implements Crawler{
      * 사이트마다 구체적인 로직을 구현합니다
      */
     protected abstract void crawl();
+
+    /**
+     * 자식 클래스가 필요에 따라 재정의할 수 있는 Hook 메서드
+     * crawl() 메서드가 실행되기 전에 호출됩니다
+     */
+    protected void applyCustomLogic() {
+    }
 
 }

@@ -4,13 +4,13 @@ import kr.co.hdi.crawl.dto.CrawlTarget;
 import kr.co.hdi.crawl.dto.ProductType;
 import kr.co.hdi.crawl.dto.SiteType;
 import kr.co.hdi.crawl.repository.ProductImageRepository;
-import kr.co.hdi.crawl.repository.ProductRepository;
+import kr.co.hdi.crawl.repository.ProductRepositoryCustom;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EnuriHairDryerCrawler extends EnuriCrawler {
 
-    public EnuriHairDryerCrawler(ProductRepository productRepository, ProductImageRepository productImageRepository) {
+    public EnuriHairDryerCrawler(ProductRepositoryCustom productRepository, ProductImageRepository productImageRepository) {
         super(productRepository, productImageRepository);
     }
 
@@ -20,4 +20,8 @@ public class EnuriHairDryerCrawler extends EnuriCrawler {
                 target.productType() == ProductType.HAIR_DRYER;
     }
 
+    @Override
+    protected String getCategoryFolderName() {
+        return "헤어드리아어";
+    }
 }

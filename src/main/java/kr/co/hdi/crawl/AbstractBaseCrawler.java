@@ -1,13 +1,11 @@
-package kr.co.hdi.crawl.service;
+package kr.co.hdi.crawl;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.springframework.stereotype.Component;
 
-@Component
-public abstract class BaseCrawler {
+public abstract class AbstractBaseCrawler implements Crawler{
 
     protected WebDriver driver;
 
@@ -29,13 +27,29 @@ public abstract class BaseCrawler {
         driver = new ChromeDriver(options);
     }
 
+    public void start(String webUrl) {
+        try {
+            initDriver();
+            driver.get(webUrl);
+
+            applyCustomLogic();
+            crawl();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    /**
+     * start 메서드에서 호출되어 실제 로직을 수행하는 추상 메서드
+     * 사이트마다 구체적인 로직을 구현합니다
+     */
     protected abstract void crawl();
 
-    public void startCrawling(String webUrl) {
-
-        initDriver();
-        driver.get(webUrl);
-        crawl();
-        driver.quit();
+    /**
+     * 자식 클래스가 필요에 따라 재정의할 수 있는 Hook 메서드
+     * crawl() 메서드가 실행되기 전에 호출됩니다
+     */
+    protected void applyCustomLogic() {
     }
+
 }

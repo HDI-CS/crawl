@@ -24,4 +24,9 @@ public class EnuriHairDryerCrawler extends EnuriCrawler {
     protected String getCategoryFolderName() {
         return "헤어드리아어";
     }
+
+    @Override
+    protected String getProductPath() {
+        return "가전/TV>이미용/소형가전>헤어기기/두피관리기>드라이기";
+    }
 }

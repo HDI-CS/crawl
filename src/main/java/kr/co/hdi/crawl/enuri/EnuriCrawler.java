@@ -39,6 +39,9 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected final ProductRepositoryCustom productRepository;
     protected final ProductImageRepository productImageRepository;
 
+    private static final Random random = new Random();
+
+
     @Value("${etc.local-image-path:./images}")
     protected String imageStoragePath;
 
@@ -46,7 +49,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     @Override
     protected void crawl() {
         List<String> allProductUrls = new ArrayList<>();
-        final int MAX_PAGES_TO_CRAWL = 5;
+        final int MAX_PAGES_TO_CRAWL = 50;
 
         for (int currentPage = 1; currentPage <= MAX_PAGES_TO_CRAWL; currentPage++) {
             log.info("===== 현재 페이지: {} 수집 시작 =====", currentPage);
@@ -72,11 +75,23 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         log.info("총 {}개의 상품 URL을 수집했습니다. 상세 정보 수집을 시작합니다.", allProductUrls.size());
         for (String url : allProductUrls) {
             try {
+                randomDelay(2000, 5000);
+
                 driver.get(webBaseUrl + url);
                 getProductData(webBaseUrl + url);
             } catch (Exception e) {
                 log.error("{} 페이지 상세 정보 수집 중 오류 발생", url, e);
             }
+        }
+    }
+
+    private void randomDelay(int minMs, int maxMs) {
+        int delay = minMs + random.nextInt(maxMs - minMs + 1);
+        try {
+            Thread.sleep(delay);
+            log.debug("랜덤 지연: {}ms", delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -124,7 +139,9 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         String companyName = productInfo.get("회사명");
         String productName = productInfo.get("제품명");
 
-        if (productRepository.existsBySimilarProductName(companyName, productName)) {
+        String productPath = getProductPath();
+
+        if (productRepository.existsBySimilarProductName(companyName, productName, productPath)) {
             log.info("[저장 건너뜀] (DB 중복) 브랜드: {}, 제품명: {}", companyName, productName);
             return;
         }
@@ -140,10 +157,10 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         List<String> detailLocalImagePaths = downloadImagesToLocal(detailImages, productFolderPath, "details");
         log.info("상세 이미지 경로: {}", detailLocalImagePaths);
 
-        List<ProductImage> images = ProductImage.from(product, productImages);
+        List<ProductImage> images = ProductImage.createThumbnail(product, productImages);
         productImageRepository.saveAll(images);
 
-        List<ProductImage> details = ProductImage.from(product, detailImages);
+        List<ProductImage> details = ProductImage.createDetailImage(product, detailImages);
         productImageRepository.saveAll(details);
     }
 
@@ -174,9 +191,12 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         String price = prodPrice.findElement(By.cssSelector("strong")).getText().trim();
 
         specItems.put("가격", price);
-
         specItems.put("프로덕트 이름", productName);
         parse(specItems, productName);
+
+        extractProductInfoItems(specItems, wait);
+
+
         for (int i = 0; i < dts.size(); i++) {
 
             WebElement dd = dds.get(i);
@@ -186,12 +206,19 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                 List<WebElement> tds = row.findElements(By.tagName("td"));
                 for (int j = 0; j < ths.size() && j < tds.size(); j++) {
                     String key = ths.get(j).getText().trim();
+                    if (key.contains("크기")) {
+                        key = "크기";
+                    }
                     String value = tds.get(j).getText().trim();
                     specItems.put(key, value);
                 }
             }
         }
         specItems.forEach((k, v) -> log.info("{} : {}", k, v));
+
+        String productPath = getProductPath();
+        specItems.put("제품경로", productPath);
+
         return specItems;
     }
 
@@ -226,9 +253,11 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
             for (WebElement image : images) {
                 String url = image.getAttribute("src");
-                if (url != null && !url.isEmpty()) {
+                if (url != null && !url.isEmpty() && !url.toLowerCase().endsWith(".gif")) {
                     imageUrls.add(url);
 //                    log.info("상세 이미지 URL (thum_wrap): {}", url);
+                } else if (url != null && url.toLowerCase().endsWith(".gif")) {
+                    log.debug("GIF 파일 제외됨: {}", url);
                 }
             }
         } catch (Exception e) {
@@ -245,7 +274,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                         String url = image.getAttribute("src");
                         if (url != null && !url.isEmpty() && !url.toLowerCase().endsWith(".gif")) {
                             imageUrls.add(url);
-                            log.info("상세 이미지 URL (thum_wrap): {}", url);
+//                            log.info("상세 이미지 URL (thum_wrap): {}", url);
                         }
                     }
                 }
@@ -447,6 +476,8 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected String getVerificationKeyword() {
         return null;
     }
+
+    protected abstract String getProductPath();
 
 
     private boolean verifyKeyword(String verificationKeyword, WebDriverWait wait) {
@@ -721,6 +752,60 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         } catch (Exception e) {
             log.error("페이지 이동 중 예외 발생: {}", e.getMessage(), e);
             return false;
+        }
+    }
+
+
+    private void extractProductInfoItems(Map<String, String> specItems, WebDriverWait wait) {
+        try {
+            // info-item 요소들 찾기
+            List<WebElement> infoItems = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
+                    By.cssSelector("span.vip-summ__info-item")
+            ));
+
+            log.info("{}개의 상품 정보 항목을 발견했습니다.", infoItems.size());
+
+            for (WebElement item : infoItems) {
+                try {
+                    String text = item.getText().trim();
+
+                    if (text.contains(" : ")) {
+                        String[] parts = text.split(" : ", 2);
+                        if (parts.length == 2) {
+                            String key = parts[0].trim();
+                            String value = parts[1].trim();
+
+                            // 특별히 추출하고 싶은 정보들
+                            switch (key) {
+                                case "등록일":
+                                    specItems.put("등록일", value);
+                                    break;
+                                case "제조사":
+                                    specItems.put("제조사", value);
+                                    break;
+                                case "브랜드":
+                                    specItems.put("브랜드", value);
+                                    break;
+                                case "출시가":
+                                    specItems.put("출시가", value);
+                                    break;
+                                case "품목":
+                                    specItems.put("품목", value);
+                                    break;
+                                default:
+                                    // 다른 모든 정보도 저장하고 싶다면 아래 주석 해제
+                                    // specItems.put(key, value);
+                                    break;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("개별 info-item 처리 중 오류: {}", e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("상품 정보 항목 추출 중 오류 발생: {}", e.getMessage());
+            // 오류가 발생해도 계속 진행
         }
     }
 

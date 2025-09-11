@@ -5,9 +5,20 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
 public abstract class AbstractBaseCrawler implements Crawler{
 
     protected WebDriver driver;
+
+    private static final List<String> USER_AGENTS = Arrays.asList(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15"
+    );
 
     protected void initDriver() {
 
@@ -15,7 +26,8 @@ public abstract class AbstractBaseCrawler implements Crawler{
         ChromeOptions options = new ChromeOptions();
 
         // user agent 설정
-        String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+        Random random = new Random();
+        String userAgent = USER_AGENTS.get(random.nextInt(USER_AGENTS.size()));
         options.addArguments("--user-agent=" + userAgent);
         // 창이 뜨지 않도록 headless 모드 설정
         options.addArguments("--headless");

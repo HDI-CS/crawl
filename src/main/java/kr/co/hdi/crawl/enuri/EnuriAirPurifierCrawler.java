@@ -29,4 +29,9 @@ public class EnuriAirPurifierCrawler extends EnuriCrawler{
     protected String getProductPath() {
         return "가전/TV>에어컨/계절가>공기청정/살균기>공기청정기";
     }
+
+    @Override
+    protected String getProductTypeName() {
+        return "공기청정기";
+    }
 }

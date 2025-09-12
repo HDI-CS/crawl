@@ -7,7 +7,10 @@ import kr.co.hdi.crawl.repository.ProductImageRepository;
 import kr.co.hdi.crawl.repository.ProductRepositoryCustom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,74 +38,365 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected static final String webBaseUrl = "https://www.enuri.com";
     protected static final Pattern MODEL_PATTERN = Pattern.compile("([A-Z0-9-]{5,})");
 
-
     protected final ProductRepositoryCustom productRepository;
     protected final ProductImageRepository productImageRepository;
 
     private static final Random random = new Random();
 
+    // 크롤링 중단 플래그
+    private volatile boolean shouldStop = false;
 
     @Value("${etc.local-image-path:./images}")
     protected String imageStoragePath;
 
-
     @Override
     protected void crawl() {
         List<String> allProductUrls = new ArrayList<>();
-        final int MAX_PAGES_TO_CRAWL = 50;
 
-        for (int currentPage = 1; currentPage <= MAX_PAGES_TO_CRAWL; currentPage++) {
-            log.info("===== 현재 페이지: {} 수집 시작 =====", currentPage);
+        int startPage = 23;
+        int endPage = 25;
+
+        log.info("╔══════════════════════════════════════════════════════════╗");
+        log.info("║  크롤링 시작 | 카테고리: {} | {}~{}페이지", getCategoryFolderName(), startPage, endPage);
+        log.info("╚══════════════════════════════════════════════════════════╝");
+
+        // 시작 페이지로 이동 (1페이지가 아닌 경우)
+        if (startPage > 1) {
+            if (!goToSpecificPage(startPage)) {
+                log.error("❌ 시작 페이지({})로 이동 실패. 크롤링 종료", startPage);
+                return;
+            }
+        }
+
+        for (int currentPage = startPage; currentPage <= endPage; currentPage++) {
+            if (shouldStop) {
+                log.info("⏹️  크롤링 중단 요청 감지. 페이지 수집 중단");
+                break;
+            }
+
+            log.info("📄 [페이지 {}/{}] 수집 시작", currentPage, endPage);
 
             // 현재 페이지에서 상품 URL 수집
             List<String> currentPageUrls = getProductUrl();
-            log.info("페이지 {}에서 {}개의 상품 URL 수집", currentPage, currentPageUrls.size());
-            allProductUrls.addAll(currentPageUrls);
 
-            if (currentPage == MAX_PAGES_TO_CRAWL) {
-                log.info("최대 {}페이지까지 수집을 완료했습니다.", MAX_PAGES_TO_CRAWL);
+            if (currentPageUrls.isEmpty()) {
+                log.warn("⚠️  [페이지 {}] 상품 없음. 다음 페이지로 이동", currentPage);
+            } else {
+                log.info("✅ [페이지 {}] {}개 상품 URL 수집 완료", currentPage, currentPageUrls.size());
+                allProductUrls.addAll(currentPageUrls);
+            }
+
+            if (currentPage == endPage) {
+                log.info("📋 최종 페이지({}) 도달. 페이지 수집 완료", endPage);
                 break;
             }
 
             // 다음 페이지로 이동
-            if (!goToNextPage(currentPage + 1)) {
-                log.info("다음 페이지({})로 이동할 수 없어 수집을 종료합니다.", currentPage + 1);
+            boolean moveSuccess = goToNextPageImproved(currentPage + 1);
+            if (!moveSuccess) {
+                log.info("⏸️  페이지 {} 이동 실패. 페이지 수집 종료", currentPage + 1);
                 break;
             }
+
+            // 페이지 이동 후 잠시 대기
+            randomDelay(1000, 2000);
         }
 
         // 수집된 모든 URL을 순회하며 상세 데이터 수집
-        log.info("총 {}개의 상품 URL을 수집했습니다. 상세 정보 수집을 시작합니다.", allProductUrls.size());
-        for (String url : allProductUrls) {
+        log.info("╔══════════════════════════════════════════════════════════╗");
+        log.info("║  상세 정보 수집 시작 | 총 {}개 상품", String.format("%3d", allProductUrls.size()));
+        log.info("╚══════════════════════════════════════════════════════════╝");
+
+        int successCount = 0;
+        int failCount = 0;
+        int skipCount = 0;
+
+        for (int i = 0; i < allProductUrls.size(); i++) {
+            if (shouldStop) {
+                log.info("⏹️  크롤링 중단 요청 감지. 상세 정보 수집 중단");
+                break;
+            }
+
+            String url = allProductUrls.get(i);
+            log.info("🔍 [{}/{}] 상품 상세 정보 수집 시작", i + 1, allProductUrls.size());
+
             try {
                 randomDelay(2000, 5000);
-
                 driver.get(webBaseUrl + url);
-                getProductData(webBaseUrl + url);
+
+                Map<String, Object> result = getProductDataWithResult(webBaseUrl + url);
+                String status = (String) result.get("status");
+
+                if ("SUCCESS".equals(status)) {
+                    successCount++;
+                    log.info("   ✅ 저장 완료 | 브랜드: {} | 제품: {}",
+                             result.get("company"), result.get("product"));
+                } else if ("SKIP".equals(status)) {
+                    skipCount++;
+                    log.info("   ⏭️  건너뜀 | 사유: {}", result.get("reason"));
+                } else {
+                    failCount++;
+                    log.warn("   ❌ 수집 실패");
+                }
+
             } catch (Exception e) {
-                log.error("{} 페이지 상세 정보 수집 중 오류 발생", url, e);
+                failCount++;
+                log.error("   ❌ 오류 발생: {}", e.getMessage());
             }
+        }
+
+        log.info("╔══════════════════════════════════════════════════════════╗");
+        log.info("║  크롤링 완료 | 성공: {} | 건너뜀: {} | 실패: {}",
+                 String.format("%3d", successCount),
+                 String.format("%3d", skipCount),
+                 String.format("%3d", failCount));
+        log.info("╚══════════════════════════════════════════════════════════╝");
+    }
+
+    // 중단 요청 처리 메서드
+    public void requestStop() {
+        shouldStop = true;
+        log.info("🛑 크롤링 중단 요청됨");
+    }
+
+    /**
+     * 특정 페이지로 직접 이동하는 메서드
+     */
+    private boolean goToSpecificPage(int targetPage) {
+        try {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+            // 페이징 컨테이너가 로드될 때까지 대기
+            WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.cssSelector("div.paging")
+            ));
+
+            // 현재 표시된 페이지 범위 확인
+            List<WebElement> visiblePages = pagingContainer.findElements(By.cssSelector("a.paging__item"));
+            int minVisiblePage = Integer.MAX_VALUE;
+            int maxVisiblePage = Integer.MIN_VALUE;
+
+            for (WebElement page : visiblePages) {
+                try {
+                    int pageNum = Integer.parseInt(page.getAttribute("data-page"));
+                    minVisiblePage = Math.min(minVisiblePage, pageNum);
+                    maxVisiblePage = Math.max(maxVisiblePage, pageNum);
+                } catch (NumberFormatException e) {
+                    // 페이지 번호를 파싱할 수 없는 경우 무시
+                }
+            }
+
+            // 목표 페이지가 현재 표시된 범위에 있는지 확인
+            if (targetPage >= minVisiblePage && targetPage <= maxVisiblePage) {
+                // 직접 페이지 번호 클릭
+                return clickPageNumber(targetPage, pagingContainer);
+            } else if (targetPage > maxVisiblePage) {
+                // 다음 버튼을 통해 페이지 범위 이동
+                return navigateToPageRange(targetPage, true, wait);
+            } else {
+                // 이전 버튼을 통해 페이지 범위 이동
+                return navigateToPageRange(targetPage, false, wait);
+            }
+
+        } catch (Exception e) {
+            log.error("페이지 이동 오류: {}", e.getMessage());
+            return false;
         }
     }
 
+    /**
+     * 페이지 번호를 직접 클릭하는 메서드
+     */
+    private boolean clickPageNumber(int targetPage, WebElement pagingContainer) {
+        try {
+            String pageSelector = String.format("a.paging__item[data-page='%d']", targetPage);
+            WebElement pageButton = pagingContainer.findElement(By.cssSelector(pageSelector));
+
+            // 스크롤하여 버튼을 화면에 표시
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", pageButton);
+            Thread.sleep(1000);
+
+            // 클릭
+            try {
+                pageButton.click();
+            } catch (Exception e) {
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", pageButton);
+            }
+
+            // 페이지 변경 확인
+            return waitForPageChange(targetPage);
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 목표 페이지가 포함된 범위로 이동하는 메서드
+     */
+    private boolean navigateToPageRange(int targetPage, boolean forward, WebDriverWait wait) {
+        int maxAttempts = 10; // 무한루프 방지
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (shouldStop) return false;
+
+            try {
+                WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.cssSelector("div.paging")
+                ));
+
+                WebElement navButton;
+                if (forward) {
+                    navButton = pagingContainer.findElement(By.cssSelector("button.paging__btn--next"));
+                    if (navButton.getAttribute("class").contains("is--disabled")) {
+                        return false;
+                    }
+                } else {
+                    navButton = pagingContainer.findElement(By.cssSelector("button.paging__btn--prev"));
+                    if (navButton.getAttribute("class").contains("is--disabled")) {
+                        return false;
+                    }
+                }
+
+                // 버튼 클릭
+                try {
+                    navButton.click();
+                } catch (Exception e) {
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", navButton);
+                }
+
+                Thread.sleep(2000); // 페이지 로딩 대기
+
+                // 새로운 페이지 범위 확인
+                WebElement newPagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.cssSelector("div.paging")
+                ));
+
+                List<WebElement> newVisiblePages = newPagingContainer.findElements(By.cssSelector("a.paging__item"));
+                boolean targetPageVisible = false;
+
+                for (WebElement page : newVisiblePages) {
+                    try {
+                        int pageNum = Integer.parseInt(page.getAttribute("data-page"));
+                        if (pageNum == targetPage) {
+                            targetPageVisible = true;
+                            break;
+                        }
+                    } catch (NumberFormatException e) {
+                        // 무시
+                    }
+                }
+
+                if (targetPageVisible) {
+                    return clickPageNumber(targetPage, newPagingContainer);
+                }
+
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 개선된 다음 페이지 이동 메서드
+     */
+    private boolean goToNextPageImproved(int targetPage) {
+        if (shouldStop) return false;
+
+        try {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+            WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.cssSelector("div.paging")
+            ));
+
+            // 방법 1: 직접 페이지 번호로 찾기 (가장 안정적)
+            try {
+                return clickPageNumber(targetPage, pagingContainer);
+            } catch (Exception e1) {
+                // 방법 2: 다음 버튼 사용
+                try {
+                    WebElement nextButton = pagingContainer.findElement(By.cssSelector("button.paging__btn--next"));
+
+                    if (nextButton.getAttribute("class").contains("is--disabled")) {
+                        return false;
+                    }
+
+                    // 스크롤 및 클릭
+                    ((JavascriptExecutor) driver).executeScript(
+                            "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", nextButton);
+                    Thread.sleep(1000);
+
+                    try {
+                        nextButton.click();
+                    } catch (Exception e) {
+                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", nextButton);
+                    }
+
+                    return waitForPageChange(targetPage);
+
+                } catch (Exception e2) {
+                    return false;
+                }
+            }
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 페이지 변경 대기 메서드
+     */
+    private boolean waitForPageChange(int expectedPage) {
+        int maxWaitSeconds = 15;
+
+        for (int i = 0; i < maxWaitSeconds; i++) {
+            if (shouldStop) return false;
+
+            try {
+                WebElement currentPageElement = driver.findElement(By.cssSelector("a.paging__item.is--on"));
+                String currentPageText = currentPageElement.getText();
+
+                if (String.valueOf(expectedPage).equals(currentPageText)) {
+                    // 상품 목록이 로드될 때까지 추가 대기
+                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                    wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.goods-list")));
+                    wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("li.prodItem")));
+
+                    return true;
+                }
+
+                Thread.sleep(1000);
+
+            } catch (Exception e) {
+                // 계속 시도
+            }
+        }
+
+        return false;
+    }
+
     private void randomDelay(int minMs, int maxMs) {
+        if (shouldStop) return;
+
         int delay = minMs + random.nextInt(maxMs - minMs + 1);
         try {
             Thread.sleep(delay);
-            log.debug("랜덤 지연: {}ms", delay);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
     protected List<String> getProductUrl() {
-
         List<String> urls = new ArrayList<>();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         try {
             WebElement goodsList = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.goods-list")));
-
             wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("li.prodItem")));
 
             List<WebElement> prodItems = goodsList.findElements(By.cssSelector("li.prodItem"));
@@ -115,11 +409,11 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                         urls.add(url);
                     }
                 } catch (Exception e) {
-                    log.warn("개별 상품 아이템에서 URL을 추출하는 데 실패했습니다.");
+                    // 개별 아이템 실패는 무시
                 }
             }
         } catch (Exception e) {
-            log.warn("상품 목록을 찾을 수 없거나 페이지에 상품이 없습니다. URL: {}", driver.getCurrentUrl());
+            // 상품 목록이 없는 경우
         }
 
         return urls;
@@ -127,22 +421,66 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
     protected void getProductData(String productUrl) {
         Map<String, String> productInfo = getProductInfo();
+        if (productInfo == null || productInfo.isEmpty()) {
+            return;
+        }
+
+        String productTypeName = getProductTypeName();
+        productInfo.put("제품유형", productTypeName);
         List<String> productImages = getProductImage();
         List<String> detailImage = getProductDetailImage();
         saveProduct(productInfo, productImages, detailImage, productUrl);
     }
 
+    // 결과와 함께 반환하는 새로운 메서드
+    protected Map<String, Object> getProductDataWithResult(String productUrl) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            Map<String, String> productInfo = getProductInfo();
+            if (productInfo == null || productInfo.isEmpty()) {
+                result.put("status", "FAIL");
+                result.put("reason", "상품 정보 수집 실패");
+                return result;
+            }
+
+            String companyName = productInfo.get("회사명");
+            String productName = productInfo.get("제품명");
+            String productPath = getProductPath();
+
+            // 중복 체크
+            if (productRepository.existsBySimilarProductName(companyName, productName, productPath)) {
+                result.put("status", "SKIP");
+                result.put("reason", "DB 중복");
+                result.put("company", companyName);
+                result.put("product", productName);
+                return result;
+            }
+
+            List<String> productImages = getProductImage();
+            List<String> detailImage = getProductDetailImage();
+            saveProduct(productInfo, productImages, detailImage, productUrl);
+
+            result.put("status", "SUCCESS");
+            result.put("company", companyName);
+            result.put("product", productName);
+            result.put("category", productInfo.get("품목"));
+
+        } catch (Exception e) {
+            result.put("status", "FAIL");
+            result.put("reason", e.getMessage());
+        }
+
+        return result;
+    }
 
     @Transactional
     protected void saveProduct(Map<String, String> productInfo, List<String> productImages, List<String> detailImages, String productUrl) {
-
         String companyName = productInfo.get("회사명");
         String productName = productInfo.get("제품명");
-
         String productPath = getProductPath();
 
         if (productRepository.existsBySimilarProductName(companyName, productName, productPath)) {
-            log.info("[저장 건너뜀] (DB 중복) 브랜드: {}, 제품명: {}", companyName, productName);
             return;
         }
 
@@ -152,10 +490,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         String productFolderPath = createProductFolder(product.getId(), product.getProductName());
 
         List<String> localImagePaths = downloadImagesToLocal(productImages, productFolderPath, "thumbnails");
-        log.info("상품 이미지 경로: {}", localImagePaths);
-
         List<String> detailLocalImagePaths = downloadImagesToLocal(detailImages, productFolderPath, "details");
-        log.info("상세 이미지 경로: {}", detailLocalImagePaths);
 
         List<ProductImage> images = ProductImage.createThumbnail(product, productImages);
         productImageRepository.saveAll(images);
@@ -165,84 +500,89 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     }
 
     protected Map<String, String> getProductInfo() {
+        if (shouldStop) return null;
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        try {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
-        String verificationKeyword = getVerificationKeyword(); // 자식에게 키워드를 물어봄
+            String verificationKeyword = getVerificationKeyword();
 
-        // 키워드가 있을 경우에만 검증 로직 수행
-        if (verifyKeyword(verificationKeyword, wait)) return null;
+            // 키워드가 있을 경우에만 검증 로직 수행
+            if (verifyKeyword(verificationKeyword, wait)) return null;
 
+            // 1. 제품 이름
+            WebElement prodSum = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.vip-summ__prod")));
+            String productName = prodSum.findElement(By.cssSelector("div.vip__tx--title")).getText().trim();
 
-        // 1. 제품 이름
-        WebElement prodSum = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.vip-summ__prod")));
-        String productName = prodSum.findElement(By.cssSelector("div.vip__tx--title")).getText().trim();
-        log.info("프로덕트 이름: {}", productName);
+            // 2. 상품 정보
+            WebElement specTable = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("enuri_spec_table")));
+            List<WebElement> dts = specTable.findElements(By.tagName("dt"));
+            List<WebElement> dds = specTable.findElements(By.tagName("dd"));
 
-        // 2. 상품 정보
-        WebElement specTable = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("enuri_spec_table")));
-        List<WebElement> dts = specTable.findElements(By.tagName("dt"));
-        List<WebElement> dds = specTable.findElements(By.tagName("dd"));
+            Map<String, String> specItems = new HashMap<>();
 
-        Map<String, String> specItems = new HashMap<>();
+            // 가격
+            WebElement prodPrice = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.prodminprice__tx--price")));
+            String price = prodPrice.findElement(By.cssSelector("strong")).getText().trim();
 
-        // 가격
-        WebElement prodPrice = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.prodminprice__tx--price")));
-        String price = prodPrice.findElement(By.cssSelector("strong")).getText().trim();
+            specItems.put("가격", price);
+            specItems.put("프로덕트 이름", productName);
+            parse(specItems, productName);
 
-        specItems.put("가격", price);
-        specItems.put("프로덕트 이름", productName);
-        parse(specItems, productName);
+            extractProductInfoItems(specItems, wait);
 
-        extractProductInfoItems(specItems, wait);
-
-
-        for (int i = 0; i < dts.size(); i++) {
-
-            WebElement dd = dds.get(i);
-            List<WebElement> rows = dd.findElements(By.tagName("tr"));
-            for (WebElement row : rows) {
-                List<WebElement> ths = row.findElements(By.tagName("th"));
-                List<WebElement> tds = row.findElements(By.tagName("td"));
-                for (int j = 0; j < ths.size() && j < tds.size(); j++) {
-                    String key = ths.get(j).getText().trim();
-                    if (key.contains("크기")) {
-                        key = "크기";
+            for (int i = 0; i < dts.size(); i++) {
+                WebElement dd = dds.get(i);
+                List<WebElement> rows = dd.findElements(By.tagName("tr"));
+                for (WebElement row : rows) {
+                    List<WebElement> ths = row.findElements(By.tagName("th"));
+                    List<WebElement> tds = row.findElements(By.tagName("td"));
+                    for (int j = 0; j < ths.size() && j < tds.size(); j++) {
+                        String key = ths.get(j).getText().trim();
+                        if (key.contains("크기")) {
+                            key = "크기";
+                        }
+                        String value = tds.get(j).getText().trim();
+                        specItems.put(key, value);
                     }
-                    String value = tds.get(j).getText().trim();
-                    specItems.put(key, value);
                 }
             }
+
+            String productPath = getProductPath();
+            specItems.put("제품경로", productPath);
+
+            return specItems;
+
+        } catch (Exception e) {
+            log.error("상품 정보 수집 실패: {}", e.getMessage());
+            return null;
         }
-        specItems.forEach((k, v) -> log.info("{} : {}", k, v));
-
-        String productPath = getProductPath();
-        specItems.put("제품경로", productPath);
-
-        return specItems;
     }
 
     protected List<String> getProductImage() {
+        if (shouldStop) return new ArrayList<>();
+
         List<String> imageUrls = new ArrayList<>();
 
-        WebElement thumbList = driver.findElement(By.cssSelector("ul.thum__list"));
-        List<WebElement> images = thumbList.findElements(By.tagName("img"));
+        try {
+            WebElement thumbList = driver.findElement(By.cssSelector("ul.thum__list"));
+            List<WebElement> images = thumbList.findElements(By.tagName("img"));
 
-        for (WebElement img : images) {
-            String url = img.getAttribute("src");
-            if (url != null && !url.isEmpty() && !url.contains("youtube.com")) {
-                imageUrls.add(url);
-//                log.info("이미지 URL: {}", url);
+            for (WebElement img : images) {
+                String url = img.getAttribute("src");
+                if (url != null && !url.isEmpty() && !url.contains("youtube.com")) {
+                    imageUrls.add(url);
+                }
             }
+        } catch (Exception e) {
+            // 이미지를 찾을 수 없는 경우 빈 리스트 반환
         }
+
         return imageUrls;
-        // TODO: S3 에 저장
-//        for(String imageUrl : imageUrls) {
-//            System.out.println(imageUrl);
-//        }
     }
 
     private List<String> getProductDetailImage() {
+        if (shouldStop) return new ArrayList<>();
 
         List<String> imageUrls = new ArrayList<>();
 
@@ -255,14 +595,9 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                 String url = image.getAttribute("src");
                 if (url != null && !url.isEmpty() && !url.toLowerCase().endsWith(".gif")) {
                     imageUrls.add(url);
-//                    log.info("상세 이미지 URL (thum_wrap): {}", url);
-                } else if (url != null && url.toLowerCase().endsWith(".gif")) {
-                    log.debug("GIF 파일 제외됨: {}", url);
                 }
             }
         } catch (Exception e) {
-            log.warn("div.thum_wrap을 찾을 수 없습니다. 대안 방법으로 시도합니다: {}", e.getMessage());
-
             try {
                 // 두 번째 시도: div.tx_wrap.cw__cont에서 p 태그 내 img 찾기
                 WebElement txWrapElement = driver.findElement(By.cssSelector("div.tx_wrap.cw__cont"));
@@ -274,35 +609,36 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                         String url = image.getAttribute("src");
                         if (url != null && !url.isEmpty() && !url.toLowerCase().endsWith(".gif")) {
                             imageUrls.add(url);
-//                            log.info("상세 이미지 URL (thum_wrap): {}", url);
                         }
                     }
                 }
             } catch (Exception ex) {
-                log.error("상세 이미지 요소를 찾을 수 없습니다: {}", ex.getMessage());
+                // 상세 이미지를 찾을 수 없는 경우 빈 리스트 반환
             }
         }
-        log.info("총 {}개의 상세 이미지를 찾았습니다.", imageUrls.size());
+
         return imageUrls;
     }
 
-
     private List<String> downloadImagesToLocal(List<String> imageUrls, String productFolderPath, String subFolderName) {
+        if (shouldStop) return new ArrayList<>();
+
         List<String> localPaths = new ArrayList<>();
 
         // 하위 폴더 생성 (thumbnails 또는 details)
         String subFolderPath = createSubFolder(productFolderPath, subFolderName);
 
         for (int i = 0; i < imageUrls.size(); i++) {
+            if (shouldStop) break;
+
             String imageUrl = imageUrls.get(i);
             try {
                 String localPath = downloadImage(imageUrl, subFolderPath, i, subFolderName);
                 if (localPath != null) {
                     localPaths.add(localPath);
-                    log.info("{} 이미지 다운로드 완료: {}", subFolderName, localPath);
                 }
             } catch (Exception e) {
-                log.error("{} 이미지 다운로드 실패: {} - {}", subFolderName, imageUrl, e.getMessage());
+                // 개별 이미지 다운로드 실패는 무시
             }
         }
 
@@ -323,10 +659,9 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             Path path = Paths.get(folderPath);
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                log.info("제품 폴더 생성: {}", folderPath);
             }
         } catch (IOException e) {
-            log.error("제품 폴더 생성 실패: {} - {}", folderPath, e.getMessage());
+            log.error("폴더 생성 실패: {}", e.getMessage());
         }
 
         return folderPath;
@@ -342,10 +677,9 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             Path path = Paths.get(subFolderPath);
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                log.info("{} 하위 폴더 생성: {}", subFolderName, subFolderPath);
             }
         } catch (IOException e) {
-            log.error("{} 하위 폴더 생성 실패: {} - {}", subFolderName, subFolderPath, e.getMessage());
+            // 폴더 생성 실패 무시
         }
 
         return subFolderPath;
@@ -355,6 +689,8 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
      * 개별 이미지 다운로드
      */
     private String downloadImage(String imageUrl, String folderPath, int index, String prefix) throws IOException {
+        if (shouldStop) return null;
+
         // URL에서 파일 확장자 추출
         String fileExtension = getFileExtension(imageUrl);
         String fileName = String.format("%s_%03d%s", prefix, index + 1, fileExtension);
@@ -388,7 +724,6 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
                 return filePath;
             } else {
-                log.warn("이미지 다운로드 실패 - HTTP 상태코드: {} URL: {}", responseCode, imageUrl);
                 return null;
             }
 
@@ -404,7 +739,6 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             }
         }
     }
-
 
     /**
      * URL에서 파일 확장자 추출
@@ -463,7 +797,6 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         map.put("회사명", companyName);
         map.put("제품명", productName);
         map.put("모델명", modelName);
-
     }
 
     protected abstract String getCategoryFolderName();
@@ -479,10 +812,19 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
     protected abstract String getProductPath();
 
-
     private boolean verifyKeyword(String verificationKeyword, WebDriverWait wait) {
         if (verificationKeyword != null && !verificationKeyword.isEmpty()) {
             try {
+                // 제품명 먼저 가져오기
+                String productName = "";
+                try {
+                    WebElement prodSum = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                            By.cssSelector("div.vip-summ__prod")));
+                    productName = prodSum.findElement(By.cssSelector("div.vip__tx--title")).getText().trim();
+                } catch (Exception e) {
+                    productName = "제품명 확인 불가";
+                }
+
                 // 1. 먼저 부모 컨테이너가 로드될 때까지 기다림
                 WebElement infoContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
                         By.cssSelector("div.vip-summ__info")
@@ -502,259 +844,72 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                     infoItems = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
                             By.cssSelector("span.vip-summ__info-item")
                     ));
-                    log.info("방법 1 성공: {}개의 info-item 발견", infoItems.size());
                 } catch (TimeoutException e1) {
-                    log.warn("방법 1 실패, 방법 2 시도");
-
                     // 방법 2: 부모에서 직접 찾기
                     try {
                         infoItems = infoContainer.findElements(By.cssSelector("span.vip-summ__info-item"));
                         if (infoItems.isEmpty()) {
-                            log.warn("방법 2 실패, 방법 3 시도");
-
                             // 방법 3: XPath 사용
                             infoItems = driver.findElements(By.xpath("//span[@class='vip-summ__info-item']"));
                             if (infoItems.isEmpty()) {
-                                log.warn("방법 3도 실패, 방법 4 시도");
-
                                 // 방법 4: JavaScript로 직접 찾기
                                 String script = "return document.querySelectorAll('span.vip-summ__info-item');";
                                 List<WebElement> jsElements = (List<WebElement>) ((JavascriptExecutor) driver).executeScript(script);
                                 if (jsElements != null && !jsElements.isEmpty()) {
                                     infoItems = jsElements;
-                                    log.info("방법 4 성공: JavaScript로 {}개 요소 발견", infoItems.size());
                                 }
-                            } else {
-                                log.info("방법 3 성공: XPath로 {}개 요소 발견", infoItems.size());
                             }
-                        } else {
-                            log.info("방법 2 성공: 부모에서 {}개 요소 발견", infoItems.size());
                         }
                     } catch (Exception e2) {
-                        log.error("모든 방법 실패: {}", e2.getMessage());
                         return false;
                     }
                 }
 
                 if (infoItems == null || infoItems.isEmpty()) {
-                    log.error("어떤 방법으로도 vip-summ__info-item 요소를 찾을 수 없습니다.");
-
-                    // 디버그를 위해 페이지 소스 일부 출력
-                    String pageSource = driver.getPageSource();
-                    if (pageSource.contains("vip-summ__info-item")) {
-                        log.debug("페이지 소스에는 vip-summ__info-item이 존재합니다.");
-                        log.debug("현재 URL: {}", driver.getCurrentUrl());
-                    }
-
                     return false;
                 }
 
                 boolean isVerified = false;
+                String actualCategory = "";
 
                 for (WebElement item : infoItems) {
                     try {
                         String text = item.getText();
-                        log.debug("검사 중인 텍스트: {}", text);
 
                         if (text != null && text.startsWith("품목")) {
+                            // 실제 품목 추출
+                            if (text.contains(" : ")) {
+                                String[] parts = text.split(" : ", 2);
+                                if (parts.length == 2) {
+                                    actualCategory = parts[1].trim();
+                                }
+                            }
+
                             if (text.contains(verificationKeyword)) {
                                 isVerified = true;
-                                log.info("페이지 검증 성공: '{}' 상품이 맞습니다.", verificationKeyword);
+                                log.info("   📦 품목 확인: {} | 제품: {}", verificationKeyword, productName);
                                 break;
                             }
                         }
                     } catch (Exception e) {
-                        log.warn("개별 요소 처리 중 오류: {}", e.getMessage());
                         continue;
                     }
                 }
 
                 if (!isVerified) {
-                    log.warn("검증 실패: 이 상품은 '{}'이(가) 아닙니다. 수집을 건너뜁니다.", verificationKeyword);
+                    log.info("   ⏭️  품목 불일치: {} 아님 (실제: {}) | 제품: {} | 건너뜀",
+                             verificationKeyword,
+                             actualCategory.isEmpty() ? "확인불가" : actualCategory,
+                             productName);
                     return true;
                 }
 
             } catch (Exception e) {
-                log.error("키워드 검증 중 예외 발생: {}", e.getMessage(), e);
                 return false;
             }
         }
         return false;
     }
-
-    /**
-     * 다음 페이지로 이동하는 메서드
-     */
-    private boolean goToNextPage(int targetPage) {
-        try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-
-            // 1. 페이징 컨테이너가 로드될 때까지 대기
-            WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    By.cssSelector("div.paging")
-            ));
-
-            // 2. 현재 페이지 정보 확인 (디버깅용)
-            try {
-                WebElement currentPageElement = pagingContainer.findElement(By.cssSelector("a.paging__item.is--on"));
-                String currentPageText = currentPageElement.getText();
-                log.info("현재 활성 페이지: {}", currentPageText);
-            } catch (Exception e) {
-                log.warn("현재 페이지 정보를 확인할 수 없습니다: {}", e.getMessage());
-            }
-
-            // 3. 페이지 변경 전 현재 상태 저장
-            String currentUrl = driver.getCurrentUrl();
-            WebElement referenceElement = driver.findElement(By.cssSelector("div.goods-list"));
-
-            // 4. 다양한 방법으로 다음 페이지 버튼 찾기 시도
-            WebElement nextButton = null;
-
-            // 방법 1: 정확한 페이지 번호로 찾기
-            try {
-                String nextButtonSelector = String.format("a.paging__item[data-page='%d']", targetPage);
-                nextButton = pagingContainer.findElement(By.cssSelector(nextButtonSelector));
-                log.info("방법 1 성공: 페이지 {} 버튼 발견", targetPage);
-            } catch (Exception e1) {
-                log.warn("방법 1 실패, 방법 2 시도");
-
-                // 방법 2: 다음 버튼(Next) 사용
-                try {
-                    nextButton = pagingContainer.findElement(By.cssSelector("button.paging__btn--next"));
-                    if (nextButton.getAttribute("class").contains("is--disabled")) {
-                        log.info("다음 버튼이 비활성화되어 있습니다. 마지막 페이지입니다.");
-                        return false;
-                    }
-                    log.info("방법 2 성공: 다음 버튼 사용");
-                } catch (Exception e2) {
-                    log.warn("방법 2 실패, 방법 3 시도");
-
-                    // 방법 3: XPath로 찾기
-                    try {
-                        String xpath = String.format("//a[@class='paging__item' and @data-page='%d']", targetPage);
-                        nextButton = driver.findElement(By.xpath(xpath));
-                        log.info("방법 3 성공: XPath로 페이지 {} 버튼 발견", targetPage);
-                    } catch (Exception e3) {
-                        log.error("모든 방법으로 다음 페이지 버튼을 찾을 수 없습니다.");
-
-                        // 디버그 정보 출력
-                        List<WebElement> allPagingItems = pagingContainer.findElements(By.cssSelector("a.paging__item"));
-                        log.debug("사용 가능한 페이징 버튼들:");
-                        for (WebElement item : allPagingItems) {
-                            String page = item.getAttribute("data-page");
-                            String classes = item.getAttribute("class");
-                            log.debug("  - 페이지: {}, 클래스: {}", page, classes);
-                        }
-                        return false;
-                    }
-                }
-            }
-
-            if (nextButton == null) {
-                return false;
-            }
-
-            // 5. 버튼이 클릭 가능한 상태인지 확인
-            wait.until(ExpectedConditions.elementToBeClickable(nextButton));
-
-            // 6. 스크롤하여 버튼을 화면에 표시
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", nextButton);
-            Thread.sleep(1000); // 스크롤 완료 대기
-
-            // 7. 클릭 시도 (여러 방법)
-            boolean clickSuccess = false;
-
-            // 방법 1: 일반 클릭
-            try {
-                nextButton.click();
-                clickSuccess = true;
-                log.info("방법 1로 버튼 클릭 성공");
-            } catch (Exception e1) {
-                log.warn("방법 1 클릭 실패, JavaScript 클릭 시도");
-
-                // 방법 2: JavaScript 클릭
-                try {
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", nextButton);
-                    clickSuccess = true;
-                    log.info("방법 2로 JavaScript 클릭 성공");
-                } catch (Exception e2) {
-                    log.error("모든 클릭 방법 실패: {}", e2.getMessage());
-                    return false;
-                }
-            }
-
-            if (!clickSuccess) {
-                return false;
-            }
-
-            log.info("다음 페이지({})로 이동 시도 완료", targetPage);
-
-            // 8. 페이지 변경 확인 (여러 조건으로 확인)
-            boolean pageChanged = false;
-            int maxAttempts = 10;
-
-            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-                try {
-                    // 조건 1: 기존 요소가 stale 상태가 되었는지 확인
-                    try {
-                        referenceElement.isDisplayed();
-                    } catch (StaleElementReferenceException e) {
-                        pageChanged = true;
-                        log.info("시도 {}번째: 기존 요소가 stale 상태가 됨 (페이지 변경됨)", attempt);
-                        break;
-                    }
-
-                    // 조건 2: URL 변경 확인
-                    String newUrl = driver.getCurrentUrl();
-                    if (!newUrl.equals(currentUrl)) {
-                        pageChanged = true;
-                        log.info("시도 {}번째: URL 변경 감지 ({})", attempt, newUrl);
-                        break;
-                    }
-
-                    // 조건 3: 활성 페이지 번호 변경 확인
-                    try {
-                        WebElement newCurrentPage = driver.findElement(By.cssSelector("a.paging__item.is--on"));
-                        String newPageNumber = newCurrentPage.getText();
-                        if (String.valueOf(targetPage).equals(newPageNumber)) {
-                            pageChanged = true;
-                            log.info("시도 {}번째: 활성 페이지 번호가 {}로 변경됨", attempt, newPageNumber);
-                            break;
-                        }
-                    } catch (Exception e) {
-                        // 활성 페이지 요소를 찾을 수 없음
-                    }
-
-                    Thread.sleep(1000); // 1초 대기 후 다시 확인
-
-                } catch (Exception e) {
-                    log.warn("페이지 변경 확인 중 오류 (시도 {}번째): {}", attempt, e.getMessage());
-                }
-            }
-
-            if (!pageChanged) {
-                log.warn("페이지 변경이 감지되지 않았습니다. 다음 페이지로 이동하지 못했을 수 있습니다.");
-                return false;
-            }
-
-            // 9. 새 페이지의 상품 목록이 로드될 때까지 대기
-            try {
-                wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.goods-list")));
-                wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("li.prodItem")));
-                log.info("새 페이지의 상품 목록 로드 완료");
-            } catch (Exception e) {
-                log.warn("새 페이지의 상품 목록 로드 확인 실패: {}", e.getMessage());
-                // 실패해도 계속 진행
-            }
-
-            return true;
-
-        } catch (Exception e) {
-            log.error("페이지 이동 중 예외 발생: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-
 
     private void extractProductInfoItems(Map<String, String> specItems, WebDriverWait wait) {
         try {
@@ -762,8 +917,6 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             List<WebElement> infoItems = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
                     By.cssSelector("span.vip-summ__info-item")
             ));
-
-            log.info("{}개의 상품 정보 항목을 발견했습니다.", infoItems.size());
 
             for (WebElement item : infoItems) {
                 try {
@@ -800,14 +953,13 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("개별 info-item 처리 중 오류: {}", e.getMessage());
+                    // 개별 item 처리 실패는 무시
                 }
             }
         } catch (Exception e) {
-            log.warn("상품 정보 항목 추출 중 오류 발생: {}", e.getMessage());
-            // 오류가 발생해도 계속 진행
+            // 상품 정보 항목 추출 실패는 무시하고 계속 진행
         }
     }
 
+    protected abstract String getProductTypeName();
 }
-

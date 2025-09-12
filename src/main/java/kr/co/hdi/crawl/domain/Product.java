@@ -34,6 +34,8 @@ public class Product {
     private String registeredAt;
     private String productPath;
 
+    private String productTypeName;
+
 
     public static Product from(Map<String, String> productInfo, String referenceUrl) {
         return Product.builder()
@@ -47,11 +49,13 @@ public class Product {
                 .referenceUrl(referenceUrl)
                 .productPath(productInfo.get("제품경로"))
                 .registeredAt(productInfo.get("등록일"))
+                .productTypeName(productInfo.get("제품유형"))
                 .build();
     }
 
     @Builder(access = PRIVATE)
-    private Product(String productName, String modelName, String price, String material, String size, String weight, String referenceUrl, String companyName, String registeredAt, String productPath) {
+    private Product(String productName, String modelName, String price, String material, String size, String weight, String referenceUrl, String companyName, String registeredAt, String productPath, String productTypeName) {
+        this.productTypeName = productTypeName;
         this.registeredAt = registeredAt;
         this.productPath = productPath;
         this.companyName = companyName;

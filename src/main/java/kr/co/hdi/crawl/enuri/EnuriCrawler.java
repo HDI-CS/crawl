@@ -56,8 +56,8 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected void crawl() {
         List<String> allProductUrls = new ArrayList<>();
 
-        int startPage = 62;
-        int endPage = 65;
+        int startPage = 72;
+        int endPage = 120;
 
         log.info("╔══════════════════════════════════════════════════════════╗");
         log.info("║  크롤링 시작 | 카테고리: {} | {}~{}페이지", getCategoryFolderName(), startPage, endPage);
@@ -244,22 +244,13 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             String pageSelector = String.format("a.paging__item[data-page='%d']", targetPage);
             WebElement pageButton = pagingContainer.findElement(By.cssSelector(pageSelector));
 
-            // 스크롤하여 버튼을 화면에 표시
-            ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", pageButton);
-            Thread.sleep(1000);
-
-            // 클릭
-            try {
-                pageButton.click();
-            } catch (Exception e) {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", pageButton);
-            }
+            clickElementSafely(pageButton);
 
             // 페이지 변경 확인
             return waitForPageChange(targetPage);
 
         } catch (Exception e) {
+            // 페이지 번호 직접 클릭 실패
             return false;
         }
     }
@@ -332,53 +323,41 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         return false;
     }
 
-    /**
-     * 개선된 다음 페이지 이동 메서드
-     */
     private boolean goToNextPageImproved(int targetPage) {
         if (shouldStop) return false;
 
         try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10)); // 5초에서 10초로 증가
+
+            // 현재 페이지 확인
+            int currentPage = getCurrentPage();
+            log.info("   현재 페이지: {}, 목표 페이지: {}", currentPage, targetPage);
 
             WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
                     By.cssSelector("div.paging")
             ));
 
             // 방법 1: 직접 페이지 번호로 찾기 (가장 안정적)
-            try {
-                return clickPageNumber(targetPage, pagingContainer);
-            } catch (Exception e1) {
-                // 방법 2: 다음 버튼 사용
-                try {
-                    WebElement nextButton = pagingContainer.findElement(By.cssSelector("button.paging__btn--next"));
-
-                    if (nextButton.getAttribute("class").contains("is--disabled")) {
-                        return false;
-                    }
-
-                    // 스크롤 및 클릭
-                    ((JavascriptExecutor) driver).executeScript(
-                            "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", nextButton);
-                    Thread.sleep(1000);
-
-                    try {
-                        nextButton.click();
-                    } catch (Exception e) {
-                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", nextButton);
-                    }
-
-                    return waitForPageChange(targetPage);
-
-                } catch (Exception e2) {
-                    return false;
-                }
+            if (clickPageNumber(targetPage, pagingContainer)) {
+                log.info("   ✅ 직접 페이지 번호 클릭 성공: {}", targetPage);
+                return true;
             }
 
+            // 방법 2: 10단위 경계 또는 연속 번호에서 특별 처리
+            if (needsSpecialHandling(currentPage, targetPage)) {
+                log.info("   🔄 특별 처리 모드 - 현재: {}, 목표: {}", currentPage, targetPage);
+                return handleSpecialPageTransition(targetPage, wait);
+            }
+
+            // 방법 3: 기본 다음 버튼 사용
+            return useNextButton(targetPage, pagingContainer, wait);
+
         } catch (Exception e) {
+            log.error("   ❌ 페이지 이동 오류: {}", e.getMessage());
             return false;
         }
     }
+
 
     /**
      * 페이지 변경 대기 메서드
@@ -984,4 +963,282 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     }
 
     protected abstract String getProductTypeName();
+
+    /**
+     * 현재 페이지 번호 가져오기
+     */
+    private int getCurrentPage() {
+        try {
+            WebElement currentPageElement = driver.findElement(By.cssSelector("a.paging__item.is--on"));
+            return Integer.parseInt(currentPageElement.getText().trim());
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * 특별 처리가 필요한 경우인지 확인
+     */
+    private boolean needsSpecialHandling(int currentPage, int targetPage) {
+        // 10단위 경계 (80→81, 70→71 등)
+        if (currentPage % 10 == 0 && targetPage == currentPage + 1) {
+            return true;
+        }
+
+        // 페이지 범위 경계 (페이지네이션 블록의 마지막에서 다음으로)
+        if (isAtPageRangeBoundary(currentPage, targetPage)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 페이지 범위 경계에 있는지 확인
+     */
+    private boolean isAtPageRangeBoundary(int currentPage, int targetPage) {
+        try {
+            List<WebElement> visiblePages = driver.findElements(By.cssSelector("div.paging a.paging__item"));
+            if (visiblePages.isEmpty()) return false;
+
+            int maxVisiblePage = visiblePages.stream()
+                    .mapToInt(el -> {
+                        try {
+                            return Integer.parseInt(el.getAttribute("data-page"));
+                        } catch (Exception e) {
+                            return 0;
+                        }
+                    })
+                    .max()
+                    .orElse(0);
+
+            // 현재 보이는 페이지 범위의 마지막이고, 목표 페이지가 다음 범위에 있는 경우
+            return currentPage == maxVisiblePage && targetPage > maxVisiblePage;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 특별한 페이지 전환 처리
+     */
+    private boolean handleSpecialPageTransition(int targetPage, WebDriverWait wait) {
+        // 1단계: 다음 버튼으로 페이지 범위 이동
+        if (!moveToNextPageRange(wait)) {
+            return false;
+        }
+
+        // 2단계: 새로운 범위에서 목표 페이지 찾기
+        return findAndClickTargetPageInNewRange(targetPage, wait);
+    }
+
+    /**
+     * 다음 페이지 범위로 이동
+     */
+    private boolean moveToNextPageRange(WebDriverWait wait) {
+        int maxAttempts = 3;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                log.info("   🔄 페이지 범위 이동 시도: {}/{}", attempt, maxAttempts);
+
+                WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.cssSelector("div.paging")
+                ));
+
+                // 다음 버튼 찾기
+                WebElement nextButton = findNextButton(pagingContainer);
+                if (nextButton == null) {
+                    log.warn("   ⚠️  다음 버튼을 찾을 수 없음");
+                    continue;
+                }
+
+                // 버튼이 비활성화되어 있는지 확인
+                if (isButtonDisabled(nextButton)) {
+                    log.warn("   ⚠️  다음 버튼이 비활성화됨");
+                    return false;
+                }
+
+                // 페이지 범위 이동 전 현재 상태 저장
+                Set<String> beforePages = getCurrentVisiblePages();
+
+                // 클릭 실행
+                clickElementSafely(nextButton);
+
+                // 페이지 범위 변경 확인
+                if (waitForPageRangeChange(beforePages, wait)) {
+                    log.info("   ✅ 페이지 범위 이동 성공");
+                    return true;
+                }
+
+                Thread.sleep(2000); // 재시도 전 대기
+
+            } catch (Exception e) {
+                log.warn("   ⚠️  페이지 범위 이동 시도 {} 실패: {}", attempt, e.getMessage());
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 다음 버튼 찾기
+     */
+    private WebElement findNextButton(WebElement pagingContainer) {
+        String[] selectors = {
+                "button.paging__btn--next",
+                ".paging__btn--next",
+                "button[class*='next']",
+                "a[class*='next']"
+        };
+
+        for (String selector : selectors) {
+            try {
+                WebElement button = pagingContainer.findElement(By.cssSelector(selector));
+                if (button.isDisplayed()) {
+                    return button;
+                }
+            } catch (Exception e) {
+                // 다음 선택자 시도
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 버튼이 비활성화되어 있는지 확인
+     */
+    private boolean isButtonDisabled(WebElement button) {
+        try {
+            String className = button.getAttribute("class");
+            return className != null && className.contains("is--disabled");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 현재 보이는 페이지 번호들 가져오기
+     */
+    private Set<String> getCurrentVisiblePages() {
+        Set<String> pages = new HashSet<>();
+        try {
+            List<WebElement> pageElements = driver.findElements(By.cssSelector("div.paging a.paging__item"));
+            for (WebElement element : pageElements) {
+                String pageNum = element.getAttribute("data-page");
+                if (pageNum != null) {
+                    pages.add(pageNum);
+                }
+            }
+        } catch (Exception e) {
+            // 무시
+        }
+        return pages;
+    }
+
+    /**
+     * 페이지 범위 변경 대기
+     */
+    private boolean waitForPageRangeChange(Set<String> beforePages, WebDriverWait wait) {
+        int maxWaitSeconds = 10;
+
+        for (int i = 0; i < maxWaitSeconds; i++) {
+            if (shouldStop) return false;
+
+            try {
+                Thread.sleep(1000);
+
+                Set<String> currentPages = getCurrentVisiblePages();
+
+                // 페이지 범위가 변경되었는지 확인
+                if (!currentPages.equals(beforePages) && !currentPages.isEmpty()) {
+                    // 실제로 새로운 페이지가 나타났는지 확인
+                    boolean hasNewPages = currentPages.stream()
+                            .anyMatch(page -> !beforePages.contains(page));
+
+                    if (hasNewPages) {
+                        return true;
+                    }
+                }
+
+            } catch (Exception e) {
+                // 계속 시도
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 새로운 범위에서 목표 페이지 찾기
+     */
+    private boolean findAndClickTargetPageInNewRange(int targetPage, WebDriverWait wait) {
+        try {
+            // 새로운 페이지네이션 컨테이너 로드 대기
+            WebElement newPagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.cssSelector("div.paging")
+            ));
+
+            // 목표 페이지 버튼 찾기 및 클릭
+            return clickPageNumber(targetPage, newPagingContainer);
+
+        } catch (Exception e) {
+            log.error("   ❌ 새 범위에서 목표 페이지 찾기 실패: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 기본 다음 버튼 사용
+     */
+    private boolean useNextButton(int targetPage, WebElement pagingContainer, WebDriverWait wait) {
+        try {
+            WebElement nextButton = findNextButton(pagingContainer);
+            if (nextButton == null || isButtonDisabled(nextButton)) {
+                log.warn("   ⚠️  다음 버튼 사용 불가");
+                return false;
+            }
+
+            clickElementSafely(nextButton);
+            boolean success = waitForPageChange(targetPage);
+
+            if (success) {
+                log.info("   ✅ 다음 버튼으로 이동 성공: {}", targetPage);
+            } else {
+                log.warn("   ⚠️  다음 버튼 이동 후 페이지 확인 실패");
+            }
+
+            return success;
+
+        } catch (Exception e) {
+            log.error("   ❌ 다음 버튼 사용 중 오류: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 안전한 요소 클릭
+     */
+    private void clickElementSafely(WebElement element) {
+        try {
+            // 스크롤하여 요소를 화면에 표시
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element);
+            Thread.sleep(1000);
+
+            // 일반 클릭 시도
+            element.click();
+
+        } catch (Exception e) {
+            try {
+                // JavaScript 클릭 시도
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+            } catch (Exception e2) {
+                log.error("   ❌ 요소 클릭 실패: {}", e2.getMessage());
+                throw e2;
+            }
+        }
+    }
 }

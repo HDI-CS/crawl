@@ -36,7 +36,7 @@ public class EnuriCleanerCrawler extends EnuriCrawler{
         final By LOADER_LOCATOR = By.cssSelector("div.comm-loader");
         final By RESULT_LIST_LOCATOR = By.cssSelector("div.goods-list");
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
         WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
 
         log.info("🔍 핸디스틱청소기 필터 선택 시작");

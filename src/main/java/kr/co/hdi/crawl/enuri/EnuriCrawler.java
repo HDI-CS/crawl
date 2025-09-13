@@ -41,6 +41,9 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected final ProductRepositoryCustom productRepository;
     protected final ProductImageRepository productImageRepository;
 
+    private static final int RESTART_INTERVAL = 15; // 15개마다 재시작
+
+
     private static final Random random = new Random();
 
     // 크롤링 중단 플래그
@@ -53,8 +56,8 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected void crawl() {
         List<String> allProductUrls = new ArrayList<>();
 
-        int startPage = 23;
-        int endPage = 25;
+        int startPage = 62;
+        int endPage = 65;
 
         log.info("╔══════════════════════════════════════════════════════════╗");
         log.info("║  크롤링 시작 | 카테고리: {} | {}~{}페이지", getCategoryFolderName(), startPage, endPage);
@@ -117,6 +120,12 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                 break;
             }
 
+            // 15개마다 드라이버 재시작
+            if (i > 0 && i % RESTART_INTERVAL == 0) {
+                log.info("🔄 {}개 상품 처리 완료. 드라이버 재시작 중...", RESTART_INTERVAL);
+                restartDriverSimple();
+            }
+
             String url = allProductUrls.get(i);
             log.info("🔍 [{}/{}] 상품 상세 정보 수집 시작", i + 1, allProductUrls.size());
 
@@ -153,6 +162,29 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         log.info("╚══════════════════════════════════════════════════════════╝");
     }
 
+    /**
+     * 간단한 드라이버 재시작 메서드
+     */
+    private void restartDriverSimple() {
+        try {
+            // 기존 드라이버 종료
+            if (driver != null) {
+                driver.quit();
+            }
+
+            // 잠시 대기
+            randomDelay(5000, 10000); // 5-10초 대기
+
+            // 새 드라이버 시작
+            initDriver();
+
+            log.info("✅ 드라이버 재시작 완료");
+
+        } catch (Exception e) {
+            log.error("❌ 드라이버 재시작 실패: {}", e.getMessage());
+        }
+    }
+
     // 중단 요청 처리 메서드
     public void requestStop() {
         shouldStop = true;
@@ -164,7 +196,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
      */
     private boolean goToSpecificPage(int targetPage) {
         try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
 
             // 페이징 컨테이너가 로드될 때까지 대기
             WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
@@ -307,7 +339,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         if (shouldStop) return false;
 
         try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
 
             WebElement pagingContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(
                     By.cssSelector("div.paging")
@@ -363,7 +395,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
                 if (String.valueOf(expectedPage).equals(currentPageText)) {
                     // 상품 목록이 로드될 때까지 추가 대기
-                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
                     wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.goods-list")));
                     wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("li.prodItem")));
 
@@ -393,7 +425,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
     protected List<String> getProductUrl() {
         List<String> urls = new ArrayList<>();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
 
         try {
             WebElement goodsList = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.goods-list")));
@@ -419,18 +451,6 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         return urls;
     }
 
-    protected void getProductData(String productUrl) {
-        Map<String, String> productInfo = getProductInfo();
-        if (productInfo == null || productInfo.isEmpty()) {
-            return;
-        }
-
-        String productTypeName = getProductTypeName();
-        productInfo.put("제품유형", productTypeName);
-        List<String> productImages = getProductImage();
-        List<String> detailImage = getProductDetailImage();
-        saveProduct(productInfo, productImages, detailImage, productUrl);
-    }
 
     // 결과와 함께 반환하는 새로운 메서드
     protected Map<String, Object> getProductDataWithResult(String productUrl) {
@@ -459,6 +479,8 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
 
             List<String> productImages = getProductImage();
             List<String> detailImage = getProductDetailImage();
+            String productTypeName = getProductTypeName();
+            productInfo.put("제품유형", productTypeName);
             saveProduct(productInfo, productImages, detailImage, productUrl);
 
             result.put("status", "SUCCESS");
@@ -503,7 +525,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
         if (shouldStop) return null;
 
         try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
 
             String verificationKeyword = getVerificationKeyword();
 

@@ -5,9 +5,13 @@ import kr.co.hdi.crawl.dto.ProductType;
 import kr.co.hdi.crawl.dto.SiteType;
 import kr.co.hdi.crawl.repository.ProductImageRepository;
 import kr.co.hdi.crawl.repository.ProductRepositoryCustom;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
+@Slf4j
 public class EnuriHairDryerCrawler extends EnuriCrawler {
 
     public EnuriHairDryerCrawler(ProductRepositoryCustom productRepository, ProductImageRepository productImageRepository) {
@@ -33,5 +37,11 @@ public class EnuriHairDryerCrawler extends EnuriCrawler {
     @Override
     protected String getProductTypeName() {
         return "헤어드라이어";
+    }
+
+    // 드라이기 전체 상품중 유효하지 않은게 10개여서 true로 처리
+    @Override
+    protected boolean isValidProduct(Map<String, String> productInfo) {
+        return true;
     }
 }

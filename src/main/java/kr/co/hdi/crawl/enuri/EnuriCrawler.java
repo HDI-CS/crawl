@@ -56,8 +56,8 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
     protected void crawl() {
         List<String> allProductUrls = new ArrayList<>();
 
-        int startPage = 72;
-        int endPage = 120;
+        int startPage = 1;
+        int endPage = 80;
 
         log.info("╔══════════════════════════════════════════════════════════╗");
         log.info("║  크롤링 시작 | 카테고리: {} | {}~{}페이지", getCategoryFolderName(), startPage, endPage);
@@ -440,6 +440,15 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             if (productInfo == null || productInfo.isEmpty()) {
                 result.put("status", "FAIL");
                 result.put("reason", "상품 정보 수집 실패");
+                return result;
+            }
+
+            // valid하지 않을때
+            if (!isValidProduct(productInfo)) {
+                result.put("status", "SKIP");
+                result.put("reason", "제품 조건 불충족");
+                result.put("company", productInfo.get("회사명"));
+                result.put("product", productInfo.get("제품명"));
                 return result;
             }
 
@@ -948,7 +957,7 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
                                     break;
                                 default:
                                     // 다른 모든 정보도 저장하고 싶다면 아래 주석 해제
-                                    // specItems.put(key, value);
+                                    specItems.put(key, value);
                                     break;
                             }
                         }
@@ -1241,4 +1250,13 @@ public abstract class EnuriCrawler extends AbstractBaseCrawler {
             }
         }
     }
+
+
+    /**
+     * 유효성 검사, 자식에서 재정의. 추가할 조건이 없으면 true 반환
+     * @param productInfo 상품 정보 맵
+     * @return 유효하면 true, 아니면 false
+     */
+    protected abstract boolean isValidProduct(Map<String, String> productInfo);
+
 }

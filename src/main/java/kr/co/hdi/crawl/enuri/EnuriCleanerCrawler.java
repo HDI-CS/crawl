@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -245,6 +246,11 @@ public class EnuriCleanerCrawler extends EnuriCrawler{
     @Override
     protected String getProductTypeName() {
         return "핸디스틱청소기";
+    }
+
+    @Override
+    protected boolean isValidProduct(Map<String, String> productInfo) {
+        return true;
     }
 
 }

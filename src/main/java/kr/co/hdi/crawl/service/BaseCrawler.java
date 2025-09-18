@@ -25,6 +25,7 @@ public abstract class BaseCrawler {
         options.addArguments("--window-size=1920,1080");
         options.addArguments("lang=ko_KR");
         options.addArguments("--disable-blink-features=AutomationControlled");
+        options.addArguments("--disable-notifications");
 
         driver = new ChromeDriver(options);
     }

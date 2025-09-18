@@ -1,0 +1,11 @@
+storage:
+  panda-rank:
+    input-csv: "/Users/seoji/Desktop/crawl/0915_pandarank/kakao_voucher_brand_list.csv"
+    output-csv: "/Users/seoji/Desktop/crawl/0915_pandarank/FB/pandarank_voucher_1.csv"
+
+  kakao:
+    logo:
+      input-csv: "/Users/seoji/Desktop/crawl/kakao/kakao_cosmetic_brand_list_unique.csv"
+      output-image: "/Users/seoji/Desktop/crawl/0916_logo/re/cosmetic"
+    brand:
+      output-csv: "/Users/seoji/Desktop/crawl/kakao/kakao_cosmetic_brand_list_unique.csv"

@@ -30,7 +30,7 @@ public class KakaoLogoService {
     @Value("${storage.kakao.logo.output-image}")
     private String outputImagePath;
 
-    public void getLogoImage() {
+    public void getLogoImage(String type) {
 
         List<BrandNameAndImageDto> dtos = new ArrayList<>();
 
@@ -48,7 +48,7 @@ public class KakaoLogoService {
         } catch (Exception e) {
             log.error("csv 읽는 중 에러 발생", e);
         }
-        saveImages(dtos, outputImagePath);
+        saveImages(dtos, outputImagePath, type);
     }
 
      private String getOriginalImageUrl(String url) {
@@ -68,7 +68,7 @@ public class KakaoLogoService {
         }
     }
 
-    public void saveImages(List<BrandNameAndImageDto> dtos, String fileStoragePath) {
+    public void saveImages(List<BrandNameAndImageDto> dtos, String fileStoragePath, String type) {
         int successCnt = 1;
         for(int i = 0; i < dtos.size(); i++) {
 
@@ -79,7 +79,8 @@ public class KakaoLogoService {
                 String imagePath = downloadImage(
                         dtos.get(i).imageUrl(), // DTO에서 이미지 URL 가져오기
                         fileStoragePath,
-                        indexLabel + "_" + dtos.get(i).name()      // 파일 이름 접두사
+                        indexLabel + "_" + dtos.get(i).name(),      // 파일 이름 접두사
+                        type
                 );
                 successCnt++;
             } catch (IOException e) {
@@ -88,11 +89,11 @@ public class KakaoLogoService {
         }
     }
 
-    private String downloadImage(String imageUrl, String folderPath, String prefix) throws IOException {
+    private String downloadImage(String imageUrl, String folderPath, String prefix, String type) throws IOException {
 
         // URL에서 파일 확장자 추출
         String fileExtension = getFileExtension(imageUrl);
-        String fileName = "BE_" + prefix + fileExtension;
+        String fileName = type + prefix + fileExtension;  // type : BE(cosmetic) 또는 FB(food)
         String filePath = Paths.get(folderPath, fileName).toString();
 
         HttpURLConnection connection = null;

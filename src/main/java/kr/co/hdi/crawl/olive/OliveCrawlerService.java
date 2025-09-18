@@ -1,6 +1,10 @@
-package kr.co.hdi.crawl.service;
+package kr.co.hdi.crawl.olive;
 
 
+import kr.co.hdi.crawl.AbstractBaseCrawler;
+import kr.co.hdi.crawl.dto.CrawlTarget;
+import kr.co.hdi.crawl.dto.ProductType;
+import kr.co.hdi.crawl.dto.SiteType;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Actions;
@@ -14,7 +18,7 @@ import java.util.Set;
 
 @Slf4j
 @Service
-public class OliveCrawlerService extends BaseCrawler {
+public class OliveCrawlerService extends AbstractBaseCrawler {
 
     @Override
     protected void crawl() {
@@ -79,4 +83,10 @@ public class OliveCrawlerService extends BaseCrawler {
             log.error("CSV 저장 중 오류 발생", e);
         }
     }
+
+    @Override
+    public boolean supports(CrawlTarget target) {
+        return target.siteType() == SiteType.OLIVEYOUNG && target.productType() == ProductType.BRAND;
+    }
+
 }

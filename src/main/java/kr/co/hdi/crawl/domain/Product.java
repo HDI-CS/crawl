@@ -20,6 +20,7 @@ public class Product {
     @Id @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
+    private String companyName;
     @Column(nullable = false)
     private String productName;
 
@@ -32,8 +33,9 @@ public class Product {
 
     public static Product from(Map<String, String> productInfo, String referenceUrl) {
         return Product.builder()
-                .productName(productInfo.get("프로덕트 이름"))
-                .modelName("N/A")
+                .companyName(productInfo.get("회사명"))
+                .productName(productInfo.get("제품명"))
+                .modelName(productInfo.get("모델명"))
                 .price(productInfo.get("가격"))
                 .material("N/A")
                 .size(productInfo.get("크기"))
@@ -43,7 +45,8 @@ public class Product {
     }
 
     @Builder(access = PRIVATE)
-    private Product(String productName, String modelName, String price, String material, String size, String weight, String referenceUrl) {
+    private Product(String productName, String modelName, String price, String material, String size, String weight, String referenceUrl, String companyName) {
+        this.companyName = companyName;
         this.productName = productName;
         this.modelName = modelName;
         this.price = price;

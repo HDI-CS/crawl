@@ -10,7 +10,7 @@ public enum ProductType {
 
 
     // 시디
-    // 올리브영 브랜드 목록
+    // 판다랭크 브랜드 목록
     BRAND
 
 }

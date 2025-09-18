@@ -1,9 +1,8 @@
 package kr.co.hdi.crawl.kakao;
 
 import com.opencsv.CSVWriter;
-import kr.co.hdi.crawl.dto.CategoryInfo;
-import kr.co.hdi.crawl.dto.KakaoBrandListDto;
-import kr.co.hdi.crawl.service.BaseCrawler;
+import kr.co.hdi.crawl.AbstractBaseCrawler;
+import kr.co.hdi.crawl.dto.*;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
@@ -21,7 +20,7 @@ import java.util.Set;
 
 @Slf4j
 @Service
-public class KakaoCrawlerService extends BaseCrawler {
+public class KakaoCrawlerService extends AbstractBaseCrawler {
 
     @Value("${storage.kakao.brand.output-csv}")
     private String outputCsvPath;
@@ -140,5 +139,10 @@ public class KakaoCrawlerService extends BaseCrawler {
         } catch (Exception e) {
             log.error("kakao 선물하기 브랜드 리스트 크롤링 중 에러 발생", e);
         }
+    }
+
+    @Override
+    public boolean supports(CrawlTarget target) {
+        return target.siteType() == SiteType.KAKAO && target.productType() == ProductType.BRAND;
     }
 }

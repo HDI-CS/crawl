@@ -2,8 +2,11 @@ package kr.co.hdi.crawl.pandarank;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import kr.co.hdi.crawl.AbstractBaseCrawler;
+import kr.co.hdi.crawl.dto.CrawlTarget;
 import kr.co.hdi.crawl.dto.PandarankItemInfoDto;
-import kr.co.hdi.crawl.service.BaseCrawler;
+import kr.co.hdi.crawl.dto.ProductType;
+import kr.co.hdi.crawl.dto.SiteType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -26,7 +29,7 @@ import java.util.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PandarankCrawlerService extends BaseCrawler {
+public class PandarankCrawlerService extends AbstractBaseCrawler {
 
     @Value("${storage.panda-rank.input-csv}")
     private String inputCsvPath;
@@ -357,5 +360,10 @@ public class PandarankCrawlerService extends BaseCrawler {
         } catch (Exception e) {
             log.error("panda rank 브랜드 데이터 csv 출력 중 에러 발생", e);
         }
+    }
+
+    @Override
+    public boolean supports(CrawlTarget target) {
+        return target.siteType() == SiteType.PANDARANK && target.productType() == ProductType.BRAND;
     }
 }

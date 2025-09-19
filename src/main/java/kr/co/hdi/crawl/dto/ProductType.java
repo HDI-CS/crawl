@@ -7,6 +7,7 @@ public enum ProductType {
     CLEANER,
     AIR_PURIFIER,
     HAIR_DRYER,
+    HUMIDIFIER,
 
 
     // 시디

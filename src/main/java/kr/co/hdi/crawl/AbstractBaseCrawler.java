@@ -49,6 +49,8 @@ public abstract class AbstractBaseCrawler implements Crawler {
 
         // 자동화 탐지 회피
         options.addArguments("--disable-blink-features=AutomationControlled");
+        options.addArguments("--disable-notifications");
+      
         options.setExperimentalOption("excludeSwitches", Arrays.asList("enable-automation"));
         options.setExperimentalOption("useAutomationExtension", false);
 

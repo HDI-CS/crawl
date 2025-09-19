@@ -66,7 +66,12 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+	// File
 	implementation 'org.apache.poi:poi-ooxml:5.2.3'
+	implementation 'com.opencsv:opencsv:5.8'
+
+	 // Jsoup
+	implementation 'org.jsoup:jsoup:1.18.1'
 }
 
 

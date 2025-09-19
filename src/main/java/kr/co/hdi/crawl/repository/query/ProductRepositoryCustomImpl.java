@@ -16,10 +16,10 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
      * 같은 회사에 유사한 상품명이 존재하는지 확인합니다.
      * @param companyName 회사명
      * @param productName 상품명
-     * @return
+     * @return 존재 여부 (true: 존재, false: 없음)
      */
     @Override
-    public boolean existsBySimilarProductName(String companyName, String productName) {
+    public boolean existsBySimilarProductName(String companyName, String productName, String productPath) {
 
         QProduct product = QProduct.product;
         String[] words = productName.split("\\s+"); // 공백 기준으로 단어 분리
@@ -34,6 +34,7 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
                 .from(product)
                 .where(
                         product.companyName.eq(companyName), // 회사명이 같고
+                        product.productPath.eq(productPath), // 제품 경로가 같고(종류)
                         predicate
                 )
                 .fetchFirst();

@@ -23,18 +23,33 @@ public class ProductImage extends Image {
     @JoinColumn(name = "product_id", referencedColumnName = "id", nullable = false)
     private Product product;
 
-    public static List<ProductImage> from(Product product, List<String> imageUrls) {
+    private ImageType imageType;
+
+    public static List<ProductImage> createThumbnail(Product product, List<String> imageUrls) {
         return imageUrls.stream()
-                .map(url -> ProductImage.builder()
-                        .originalUrl(url)
-                        .storePath(url) // TODO: S3 저장 경로로 수정
-                        .product(product)
-                        .build())
+                .map(url -> createImage(product, url, ImageType.THUMBNAIL))
                 .toList();
     }
 
+
+    public static List<ProductImage> createDetailImage(Product product, List<String> imageUrls) {
+        return imageUrls.stream()
+                .map(url -> createImage(product, url, ImageType.DETAIL))
+                .toList();
+    }
+
+    private static ProductImage createImage(Product product, String url, ImageType type) {
+        return ProductImage.builder()
+                .originalUrl(url)
+                .storePath(url) // TODO: S3 저장 경로로 수정
+                .product(product)
+                .imageType(type)
+                .build();
+    }
+
     @Builder(access = PRIVATE)
-    private ProductImage(Product product, String originalUrl, String storePath) {
+    private ProductImage(Product product, String originalUrl, String storePath, ImageType imageType) {
+        this.imageType = imageType;
         this.product = product;
         this.originalUrl = originalUrl;
         this.storePath = storePath;

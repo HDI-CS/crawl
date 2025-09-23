@@ -28,6 +28,6 @@ public class AuthService {
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD, "잘못된 비밀번호입니다.");
         }
 
-        return new AuthResponse(user.getId(), user.getEmail(), user.getRole());
+        return AuthResponse.from(user);
     }
 }

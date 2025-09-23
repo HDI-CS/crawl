@@ -25,12 +25,15 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
 
     private String password;
 
+    private String name;
+
     private boolean enabled;
 
     @Enumerated(STRING)
     private Role role;
 
 
+    // V1에서 사용하지 않음
     public static UserEntity createUser(String email, String encodePassword) {
         return UserEntity.builder()
                 .enabled(true)

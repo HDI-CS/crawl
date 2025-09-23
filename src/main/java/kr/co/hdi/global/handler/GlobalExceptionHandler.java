@@ -7,7 +7,9 @@ import kr.co.hdi.global.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpSessionRequiredException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -70,5 +72,20 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseError);
     }
+
+    @ExceptionHandler({HttpSessionRequiredException.class, MissingRequestCookieException.class})
+    public ResponseEntity<ResponseError> handleSessionRequiredException(Exception e,
+                                                                        HttpServletRequest request) {
+        // 기존의 ResponseError DTO 형식에 맞춰 에러 응답을 생성합니다.
+        ResponseError responseError = ResponseError.builder()
+                .messageDetail("로그인이 필요한 서비스입니다.") // 클라이언트에게 보여줄 명확한 메시지
+                .errorDetail("세션이 없거나 유효하지 않습니다.") // 개발자를 위한 구체적인 에러 내용
+                .path(request.getRequestURI())
+                .build();
+
+        // 500 에러 대신, 의미에 맞는 401 Unauthorized 상태 코드를 반환합니다.
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseError);
+    }
+
 
 }

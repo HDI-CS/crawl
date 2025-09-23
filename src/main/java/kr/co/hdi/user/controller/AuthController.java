@@ -7,6 +7,7 @@ import kr.co.hdi.user.dto.response.AuthResponse;
 import kr.co.hdi.user.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,7 @@ public class AuthController {
         session.setAttribute("userId", response.id());
         session.setAttribute("email", response.email());
         session.setAttribute("role", response.role());
+        session.setAttribute("name", response.name());
 
         return ResponseEntity.ok(response);
     }
@@ -49,8 +51,10 @@ public class AuthController {
 
         String email = (String) session.getAttribute("email");
         Role role = (Role) session.getAttribute("role");
+        String name = (String) session.getAttribute("name");
 
-        return ResponseEntity.ok(new AuthResponse(userId, email, role));
+        AuthResponse response = AuthResponse.of(userId, email, name, role);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
 }

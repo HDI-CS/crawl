@@ -5,15 +5,24 @@ import kr.co.hdi.dataset.domain.ProductDatasetAssignment;
 import kr.co.hdi.dataset.repository.BrandDatasetAssignmentRepository;
 import kr.co.hdi.dataset.repository.ProductDatasetAssignmentRepository;
 import kr.co.hdi.survey.domain.BrandResponse;
+import kr.co.hdi.survey.domain.BrandSurvey;
 import kr.co.hdi.survey.domain.ProductResponse;
+import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
+import kr.co.hdi.survey.dto.response.BrandDatasetResponse;
+import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
+import kr.co.hdi.survey.dto.response.BrandSurveyResponse;
 import kr.co.hdi.survey.dto.response.SurveyDataResponse;
+import kr.co.hdi.survey.exception.SurveyErrorCode;
+import kr.co.hdi.survey.exception.SurveyException;
 import kr.co.hdi.survey.repository.BrandResponseRepository;
+import kr.co.hdi.survey.repository.BrandSurveyRepository;
 import kr.co.hdi.survey.repository.ProductResponseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -21,11 +30,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SurveyService {
 
+    private final BrandSurveyRepository brandSurveyRepository;
     private final BrandResponseRepository brandResponseRepository;
     private final ProductResponseRepository productResponseRepository;
     private final BrandDatasetAssignmentRepository brandDatasetAssignmentRepository;
     private final ProductDatasetAssignmentRepository productDatasetAssignmentRepository;
 
+    // 평가할 브랜드 리스트 조회
     @Transactional
     public List<SurveyDataResponse> getAllBrandSurveys(Long userId) {
 
@@ -39,6 +50,7 @@ public class SurveyService {
         }
 
         return brandResponses.stream()
+                .sorted(Comparator.comparing(br -> br.getBrand().getId()))
                 .map(br -> new SurveyDataResponse(
                         br.getBrand().getBrandName(),
                         br.getBrand().getImage(),
@@ -48,6 +60,7 @@ public class SurveyService {
                 .toList();
     }
 
+    // 평가할 제품 리스트 조회
     @Transactional
     public List<SurveyDataResponse> getAllProductSurveys(Long userId) {
 
@@ -61,6 +74,7 @@ public class SurveyService {
         }
 
         return productResponses.stream()
+                .sorted(Comparator.comparing(pr -> pr.getProduct().getId()))
                 .map(pr -> new SurveyDataResponse(
                         pr.getProduct().getProductName(),
                         "",   // TODO: 비측면 이미지
@@ -68,5 +82,54 @@ public class SurveyService {
                         pr.getId()
                 ))
                 .toList();
+    }
+
+
+    // 브랜드 평가 데이터셋 + 응답 조회
+    public BrandSurveyDetailResponse getBrandSurveyDetail(Long brandResponseId) {
+
+        BrandResponse brandResponse = brandResponseRepository.findById(brandResponseId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.BRAND_RESPONSE_NOT_FOUND));
+
+        BrandSurvey brandSurvey = brandSurveyRepository.findById(1L)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.SURVEY_NOT_FOUND));
+
+        BrandDatasetResponse brandDatasetResponse = BrandDatasetResponse.fromEntity(brandResponse.getBrand());
+        String dataId = brandResponse.getBrand().getBrandCode() + "_" + brandResponse.getBrand().getSectorCategory();
+        BrandSurveyResponse brandSurveyResponse = BrandSurveyResponse.fromEntity(dataId, brandSurvey,brandResponse);
+        return new BrandSurveyDetailResponse(brandDatasetResponse, brandSurveyResponse);
+    }
+
+    // 브랜드 응답 저장
+    @Transactional
+    public void saveBrandSurveyResponse(Long brandResponseId, SurveyResponseRequest request) {
+
+        BrandResponse brandResponse = brandResponseRepository.findById(brandResponseId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.BRAND_RESPONSE_NOT_FOUND));
+
+        // 정량 평가
+        if (request.index() != null) {
+            brandResponse.updateResponse(request.index(), request.response());
+        }
+
+        // 정성 평가
+        brandResponse.updateTextResponse(request.textResponse());
+
+        brandResponse.updateResponseStatus();
+        brandResponseRepository.save(brandResponse);
+    }
+
+    // 브랜드 응답 최종 제출
+    @Transactional
+    public void setBrandResponseStatusDone(Long brandResponseId) {
+
+        BrandResponse brandResponse = brandResponseRepository.findById(brandResponseId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.BRAND_RESPONSE_NOT_FOUND));
+
+        if (!brandResponse.checkAllResponsesFilled())
+            throw new SurveyException(SurveyErrorCode.INCOMPLETE_RESPONSE);
+
+        brandResponse.updateResponseStatusToDone();
+        brandResponseRepository.save(brandResponse);
     }
 }

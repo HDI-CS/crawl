@@ -1,5 +1,7 @@
 package kr.co.hdi.survey.controller;
 
+import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
+import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
 import kr.co.hdi.survey.dto.response.SurveyDataResponse;
 import kr.co.hdi.survey.service.SurveyService;
 import lombok.RequiredArgsConstructor;
@@ -36,4 +38,30 @@ public class SurveyController {
     }
 
 
+    @GetMapping("/brand/{brandResponseId}")
+    public ResponseEntity<BrandSurveyDetailResponse> getBrandSurveyDetail(
+            @PathVariable Long brandResponseId
+    ) {
+
+        BrandSurveyDetailResponse response = surveyService.getBrandSurveyDetail(brandResponseId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @PostMapping("/brand/{brandResponseId}")
+    public ResponseEntity<Void> saveBrandSurveyResponse(
+            @PathVariable Long brandResponseId,
+            @RequestBody SurveyResponseRequest request) {
+
+        surveyService.saveBrandSurveyResponse(brandResponseId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/brand/{brandResponseId}/submit")
+    public ResponseEntity<Void> submitBrandSurvey(
+            @PathVariable Long brandResponseId
+    ) {
+
+        surveyService.setBrandResponseStatusDone(brandResponseId);
+        return ResponseEntity.ok().build();
+    }
 }

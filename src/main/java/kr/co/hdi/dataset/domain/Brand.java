@@ -22,11 +22,6 @@ public class Brand extends BaseTimeEntityWithDeletion {
     @Id @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
-    @Enumerated(STRING)
-    private DataType brandType;
-
-    private int brandCodeInt;
-
     private String brandCode;
 
     private String brandName;
@@ -44,11 +39,9 @@ public class Brand extends BaseTimeEntityWithDeletion {
     private String image;
 
     @Builder(access = PRIVATE)
-    private Brand(DataType brandType, int brandCodeInt, String brandCode, String brandName, String sectorCategory,
+    private Brand(String brandCode, String brandName, String sectorCategory,
                   String mainProductCategory, String mainProduct, String target, String referenceUrl, String image) {
 
-        this.brandType = brandType;
-        this.brandCodeInt = brandCodeInt;
         this.brandCode = brandCode;
         this.brandName = brandName;
         this.sectorCategory = sectorCategory;

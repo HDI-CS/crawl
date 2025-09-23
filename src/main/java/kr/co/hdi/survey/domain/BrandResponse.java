@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import kr.co.hdi.dataset.domain.Brand;
 import kr.co.hdi.global.domain.BaseTimeEntityWithDeletion;
 import kr.co.hdi.user.domain.UserEntity;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -89,4 +90,58 @@ public class BrandResponse extends BaseTimeEntityWithDeletion {
     private int response29;
 
     private int response30;
+
+    public static BrandResponse createBrandResponse(UserEntity user, Brand brand) {
+
+        return BrandResponse.builder()
+                .user(user)
+                .brand(brand)
+                .responseStatus(ResponseStatus.NOT_STARTED)
+                .build();
+    }
+
+    @Builder(access = lombok.AccessLevel.PRIVATE)
+    private BrandResponse(UserEntity user,
+                          Brand brand,
+                          ResponseStatus responseStatus,
+                          int response1, int response2, int response3, int response4, int response5,
+                          int response6, int response7, int response8, int response9, int response10,
+                          int response11, int response12, int response13, int response14, int response15,
+                          int response16, int response17, int response18, int response19, int response20,
+                          int response21, int response22, int response23, int response24, int response25,
+                          int response26, int response27, int response28, int response29, int response30) {
+        this.user = user;
+        this.brand = brand;
+        this.responseStatus = responseStatus;
+        this.response1 = response1;
+        this.response2 = response2;
+        this.response3 = response3;
+        this.response4 = response4;
+        this.response5 = response5;
+        this.response6 = response6;
+        this.response7 = response7;
+        this.response8 = response8;
+        this.response9 = response9;
+        this.response10 = response10;
+        this.response11 = response11;
+        this.response12 = response12;
+        this.response13 = response13;
+        this.response14 = response14;
+        this.response15 = response15;
+        this.response16 = response16;
+        this.response17 = response17;
+        this.response18 = response18;
+        this.response19 = response19;
+        this.response20 = response20;
+        this.response21 = response21;
+        this.response22 = response22;
+        this.response23 = response23;
+        this.response24 = response24;
+        this.response25 = response25;
+        this.response26 = response26;
+        this.response27 = response27;
+        this.response28 = response28;
+        this.response29 = response29;
+        this.response30 = response30;
+    }
 }

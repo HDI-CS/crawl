@@ -1,6 +1,7 @@
 package kr.co.hdi.survey.controller;
 
 import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
+import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
 import kr.co.hdi.survey.dto.response.SurveyDataResponse;
 import kr.co.hdi.survey.service.SurveyService;
@@ -62,6 +63,16 @@ public class SurveyController {
     ) {
 
         surveyService.setBrandResponseStatusDone(brandResponseId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/scores/weighted")
+    public ResponseEntity<Void> saveWeightedScores(
+            @RequestBody List<WeightedScoreRequest> requests,
+            @SessionAttribute(name = "userId", required = true) Long userId
+    ) {
+
+        surveyService.saveWeightedScores(userId, requests);
         return ResponseEntity.ok().build();
     }
 }

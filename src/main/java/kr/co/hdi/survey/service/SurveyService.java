@@ -7,7 +7,9 @@ import kr.co.hdi.dataset.repository.ProductDatasetAssignmentRepository;
 import kr.co.hdi.survey.domain.BrandResponse;
 import kr.co.hdi.survey.domain.BrandSurvey;
 import kr.co.hdi.survey.domain.ProductResponse;
+import kr.co.hdi.survey.domain.WeightedScore;
 import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
+import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandDatasetResponse;
 import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
 import kr.co.hdi.survey.dto.response.BrandSurveyResponse;
@@ -17,11 +19,17 @@ import kr.co.hdi.survey.exception.SurveyException;
 import kr.co.hdi.survey.repository.BrandResponseRepository;
 import kr.co.hdi.survey.repository.BrandSurveyRepository;
 import kr.co.hdi.survey.repository.ProductResponseRepository;
+import kr.co.hdi.survey.repository.WeightedScoreRepository;
+import kr.co.hdi.user.domain.UserEntity;
+import kr.co.hdi.user.exception.AuthErrorCode;
+import kr.co.hdi.user.exception.AuthException;
+import kr.co.hdi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -30,8 +38,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SurveyService {
 
+    private final UserRepository userRepository;
     private final BrandSurveyRepository brandSurveyRepository;
     private final BrandResponseRepository brandResponseRepository;
+    private final WeightedScoreRepository weightedScoreRepository;
     private final ProductResponseRepository productResponseRepository;
     private final BrandDatasetAssignmentRepository brandDatasetAssignmentRepository;
     private final ProductDatasetAssignmentRepository productDatasetAssignmentRepository;
@@ -131,5 +141,31 @@ public class SurveyService {
 
         brandResponse.updateResponseStatusToDone();
         brandResponseRepository.save(brandResponse);
+    }
+
+    // 가중치 평가
+    @Transactional
+    public void saveWeightedScores(Long userId, List<WeightedScoreRequest> requests) {
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        List<WeightedScore> scores = new ArrayList<>();
+        for (WeightedScoreRequest request : requests) {
+            scores.add(
+                    WeightedScore.createWeightedScore(
+                            user,
+                            request.category(),
+                            request.score1(),
+                            request.score2(),
+                            request.score3(),
+                            request.score4(),
+                            request.score5(),
+                            request.score6(),
+                            request.score7(),
+                            request.score8())
+            );
+        }
+        weightedScoreRepository.saveAll(scores);
     }
 }

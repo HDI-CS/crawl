@@ -59,10 +59,11 @@ public class SurveyController {
 
     @PostMapping("/brand/{brandResponseId}/submit")
     public ResponseEntity<Void> submitBrandSurvey(
-            @PathVariable Long brandResponseId
+            @PathVariable Long brandResponseId,
+            @SessionAttribute(name = "userId", required = true) Long userId
     ) {
 
-        surveyService.setBrandResponseStatusDone(brandResponseId);
+        surveyService.setBrandResponseStatusDone(brandResponseId, userId);
         return ResponseEntity.ok().build();
     }
 

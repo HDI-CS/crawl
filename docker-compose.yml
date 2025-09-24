@@ -1,0 +1,30 @@
+services:
+
+  cache:
+    container_name: redis
+    image: redis:alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - hdi-be-network
+
+  application:
+    container_name: hdi_be
+    image: gothax2/hdi_be:latest
+    ports:
+      - 8080:8080
+    depends_on:
+      - cache
+    env_file:
+      - .env
+    networks:
+      - hdi-be-network
+
+volumes:
+    redis_data:
+
+networks:
+  hdi-be-network:
+    driver: bridge

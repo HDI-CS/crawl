@@ -2,7 +2,8 @@ package kr.co.hdi.user.controller;
 
 import jakarta.servlet.http.HttpSession;
 import kr.co.hdi.user.domain.Role;
-import kr.co.hdi.user.dto.request.AuthRequest;
+import kr.co.hdi.user.dto.RegisterRequest;
+import kr.co.hdi.user.dto.request.LoginRequest;
 import kr.co.hdi.user.dto.response.AuthInfoResponse;
 import kr.co.hdi.user.dto.response.AuthResponse;
 import kr.co.hdi.user.service.AuthService;
@@ -23,11 +24,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
-            @RequestBody AuthRequest request,
+            @RequestBody LoginRequest request,
             HttpSession session
     ) {
         log.debug("Login request received for email: {}", request.email());
-        AuthResponse response = authService.loginOrRegister(request.email(), request.password());
+        AuthResponse response = authService.login(request.email(), request.password());
 
         session.setAttribute("userId", response.id());
         session.setAttribute("email", response.email());
@@ -65,6 +66,22 @@ public class AuthController {
 
         AuthInfoResponse response = authService.getAuthInfo(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(
+            @RequestBody RegisterRequest request
+    ) {
+        AuthResponse response = authService.createUser(request.email(), request.password(), request.name());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/register-admin")
+    public ResponseEntity<AuthResponse> registerAdmin(
+            @RequestBody RegisterRequest request
+    ) {
+        AuthResponse response = authService.createAdmin(request.email(), request.password(), request.name());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
 }

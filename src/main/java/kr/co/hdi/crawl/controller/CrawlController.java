@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/crawl")
+@RequestMapping("/v1/crawl")
 public class CrawlController {
 
     private final CrawlService crawlService;

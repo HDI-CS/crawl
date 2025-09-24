@@ -3,6 +3,7 @@ package kr.co.hdi.user.controller;
 import jakarta.servlet.http.HttpSession;
 import kr.co.hdi.user.domain.Role;
 import kr.co.hdi.user.dto.request.AuthRequest;
+import kr.co.hdi.user.dto.response.AuthInfoResponse;
 import kr.co.hdi.user.dto.response.AuthResponse;
 import kr.co.hdi.user.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,15 @@ public class AuthController {
         String name = (String) session.getAttribute("name");
 
         AuthResponse response = AuthResponse.of(userId, email, name, role);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/me/info")
+    public ResponseEntity<AuthInfoResponse> getCurrentUserInfo(
+            @SessionAttribute(name = "userId", required = true) Long userId
+    ) {
+
+        AuthInfoResponse response = authService.getAuthInfo(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

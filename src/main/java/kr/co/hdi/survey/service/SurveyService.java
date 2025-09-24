@@ -95,7 +95,8 @@ public class SurveyService {
         ProductSurvey productSurvey = productSurveyRepository.findById(1L)
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.SURVEY_NOT_FOUND));
 
-        ProductDataSetResponse dataSetResponse = ProductDataSetResponse.from(productResponse.getProduct());
+        ProductDataSetResponse dataSetResponse = ProductDataSetResponse.from(productResponse.getProduct(),
+                productImageRepository.findByProductId(productResponse.getProduct().getId()));
 
         ProductSurveyResponse productSurveyResponse = ProductSurveyResponse.from(productSurvey, productResponse);
 

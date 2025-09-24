@@ -1,6 +1,7 @@
 package kr.co.hdi.survey.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
 import kr.co.hdi.survey.dto.response.ProductSurveyDataResponse;
 import kr.co.hdi.survey.dto.response.ProductSurveyDetailResponse;
 import kr.co.hdi.survey.service.SurveyService;
@@ -38,6 +39,16 @@ public class ProductSurveyController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @Operation(summary = "제품 설문 응답 한개 저장")
+    @PostMapping("/product/{productResponseId}")
+    public ResponseEntity<Void> saveProductSurveyResponse(
+            @PathVariable Long productResponseId,
+            @RequestBody SurveyResponseRequest request) {
+        surveyService.saveProductSurveyResponse(productResponseId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "제출")
     @PostMapping("/product/{productResponseId}/submit")
     public ResponseEntity<Void> submitProductSurvey(
             @PathVariable Long productResponseId,
@@ -46,6 +57,5 @@ public class ProductSurveyController {
         surveyService.setProductResponseStatusDone(productResponseId, userId);
         return ResponseEntity.ok().build();
     }
-
 
 }

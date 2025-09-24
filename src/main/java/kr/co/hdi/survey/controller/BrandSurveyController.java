@@ -53,7 +53,6 @@ public class BrandSurveyController {
             @PathVariable Long brandResponseId,
             @SessionAttribute(name = "userId", required = true) Long userId
     ) {
-
         surveyService.setBrandResponseStatusDone(brandResponseId, userId);
         return ResponseEntity.ok().build();
     }

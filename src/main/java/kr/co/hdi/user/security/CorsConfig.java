@@ -11,7 +11,7 @@ public class CorsConfig {
     // TODO: production 환경에서 설정 변경
     public UrlBasedCorsConfigurationSource apiCorsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",

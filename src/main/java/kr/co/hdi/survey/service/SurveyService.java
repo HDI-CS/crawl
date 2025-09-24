@@ -4,10 +4,7 @@ import kr.co.hdi.dataset.domain.BrandDatasetAssignment;
 import kr.co.hdi.dataset.domain.ProductDatasetAssignment;
 import kr.co.hdi.dataset.repository.BrandDatasetAssignmentRepository;
 import kr.co.hdi.dataset.repository.ProductDatasetAssignmentRepository;
-import kr.co.hdi.survey.domain.BrandResponse;
-import kr.co.hdi.survey.domain.BrandSurvey;
-import kr.co.hdi.survey.domain.ProductResponse;
-import kr.co.hdi.survey.domain.WeightedScore;
+import kr.co.hdi.survey.domain.*;
 import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
 import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandDatasetResponse;
@@ -131,7 +128,7 @@ public class SurveyService {
 
     // 브랜드 응답 최종 제출
     @Transactional
-    public void setBrandResponseStatusDone(Long brandResponseId) {
+    public void setBrandResponseStatusDone(Long brandResponseId, Long userId) {
 
         BrandResponse brandResponse = brandResponseRepository.findById(brandResponseId)
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.BRAND_RESPONSE_NOT_FOUND));
@@ -141,6 +138,16 @@ public class SurveyService {
 
         brandResponse.updateResponseStatusToDone();
         brandResponseRepository.save(brandResponse);
+
+        // 모든 설문에 응답했는지
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        long datasetCount = brandDatasetAssignmentRepository.countByUser(user);
+        long responsedDatasetCount = brandResponseRepository.countByUserAndResponseStatus(user, ResponseStatus.DONE);
+        if (datasetCount == responsedDatasetCount)
+            user.updateSurveyDoneStatus();
+        userRepository.save(user);
     }
 
     // 가중치 평가

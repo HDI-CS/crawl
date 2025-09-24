@@ -1,6 +1,7 @@
 package kr.co.hdi.dataset.repository;
 
 import kr.co.hdi.dataset.domain.ProductDatasetAssignment;
+import kr.co.hdi.user.domain.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -8,4 +9,6 @@ import java.util.List;
 public interface ProductDatasetAssignmentRepository extends JpaRepository<ProductDatasetAssignment, Long> {
 
     List<ProductDatasetAssignment> findAllByUserId(Long userId);
+
+    long countByUser(UserEntity user);
 }

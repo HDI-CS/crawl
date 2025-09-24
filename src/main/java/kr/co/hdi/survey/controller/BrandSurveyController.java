@@ -3,7 +3,7 @@ package kr.co.hdi.survey.controller;
 import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
 import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
-import kr.co.hdi.survey.dto.response.SurveyDataResponse;
+import kr.co.hdi.survey.dto.response.ProductSurveyDataResponse;
 import kr.co.hdi.survey.service.SurveyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,24 +17,15 @@ import java.util.List;
 @RequestMapping("/survey")
 @Slf4j
 @RequiredArgsConstructor
-public class SurveyController {
+public class BrandSurveyController {
 
     private final SurveyService surveyService;
 
-    @GetMapping("/product")
-    public ResponseEntity<List<SurveyDataResponse>> getSurveys(
-            @SessionAttribute(name = "userId", required = true) Long userId
-    ) {
-        List<SurveyDataResponse> response = surveyService.getAllProductSurveys(userId);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
-    }
-
-
     @GetMapping("/brand")
-    public ResponseEntity<List<SurveyDataResponse>> getBrandSurveys(
+    public ResponseEntity<List<ProductSurveyDataResponse>> getBrandSurveys(
             @SessionAttribute(name = "userId", required = true) Long userId
     ) {
-        List<SurveyDataResponse> response = surveyService.getAllBrandSurveys(userId);
+        List<ProductSurveyDataResponse> response = surveyService.getAllBrandSurveys(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

@@ -23,7 +23,9 @@ public class ProductImage extends Image {
     @JoinColumn(name = "product_id", referencedColumnName = "id", nullable = false)
     private Product product;
 
-    private ImageType imageType;
+    private String detailPath;
+    private String frontPath;
+    private String sidePath;
 
     public static List<ProductImage> createThumbnail(Product product, List<String> imageUrls) {
         return imageUrls.stream()
@@ -43,13 +45,11 @@ public class ProductImage extends Image {
                 .originalUrl(url)
                 .storePath(url) // TODO: S3 저장 경로로 수정
                 .product(product)
-                .imageType(type)
                 .build();
     }
 
     @Builder(access = PRIVATE)
-    private ProductImage(Product product, String originalUrl, String storePath, ImageType imageType) {
-        this.imageType = imageType;
+    private ProductImage(Product product, String originalUrl, String storePath) {
         this.product = product;
         this.originalUrl = originalUrl;
         this.storePath = storePath;

@@ -100,4 +100,6 @@ public class ProductSurvey extends BaseTimeEntityWithDeletion {
     private String survey40;
 
     private String survey41;
+
+    private String textSurvey;
 }

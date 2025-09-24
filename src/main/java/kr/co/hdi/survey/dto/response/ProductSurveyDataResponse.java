@@ -2,7 +2,7 @@ package kr.co.hdi.survey.dto.response;
 
 import kr.co.hdi.survey.domain.ResponseStatus;
 
-public record SurveyDataResponse(
+public record ProductSurveyDataResponse(
 
         String name,
         String image,

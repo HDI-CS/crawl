@@ -2,6 +2,7 @@ package kr.co.hdi.user.service;
 
 import jakarta.transaction.Transactional;
 import kr.co.hdi.user.domain.UserEntity;
+import kr.co.hdi.user.dto.response.AuthInfoResponse;
 import kr.co.hdi.user.dto.response.AuthResponse;
 import kr.co.hdi.user.exception.AuthErrorCode;
 import kr.co.hdi.user.exception.AuthException;
@@ -29,5 +30,13 @@ public class AuthService {
         }
 
         return AuthResponse.from(user);
+    }
+
+    public AuthInfoResponse getAuthInfo(Long userId) {
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        return new AuthInfoResponse(user.getUserType(), user.getSurveyDone());
     }
 }

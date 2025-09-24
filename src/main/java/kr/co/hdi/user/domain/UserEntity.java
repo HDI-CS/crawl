@@ -25,12 +25,18 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
 
     private String password;
 
+    private String name;
+
     private boolean enabled;
 
     @Enumerated(STRING)
     private Role role;
 
+    private UserType userType;
 
+    private Boolean surveyDone;
+
+    // V1에서 사용하지 않음
     public static UserEntity createUser(String email, String encodePassword) {
         return UserEntity.builder()
                 .enabled(true)
@@ -51,6 +57,10 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
                 .password(encodePassword)
 
                 .build();
+    }
+
+    public void updateSurveyDoneStatus() {
+        this.surveyDone = true;
     }
 
     @Builder(access = PRIVATE)

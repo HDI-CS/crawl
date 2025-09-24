@@ -3,10 +3,12 @@ package kr.co.hdi.survey.domain;
 import jakarta.persistence.*;
 import kr.co.hdi.global.domain.BaseTimeEntityWithDeletion;
 import kr.co.hdi.user.domain.UserEntity;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import static jakarta.persistence.GenerationType.IDENTITY;
+import static lombok.AccessLevel.PRIVATE;
 import static lombok.AccessLevel.PROTECTED;
 
 @Entity
@@ -41,4 +43,38 @@ public class WeightedScore extends BaseTimeEntityWithDeletion {
 
     private int score8;   // 목적성
 
+    public static WeightedScore createWeightedScore(
+            UserEntity user, DatasetCategory category,
+            int score1, int score2, int score3, int score4,
+            int score5, int score6, int score7, int score8) {
+
+        return WeightedScore.builder()
+                .user(user)
+                .category(category)
+                .score1(score1)
+                .score2(score2)
+                .score3(score3)
+                .score4(score4)
+                .score5(score5)
+                .score6(score6)
+                .score7(score7)
+                .score8(score8)
+                .build();
+    }
+
+    @Builder(access = PRIVATE)
+    private WeightedScore(UserEntity user, DatasetCategory category,
+                         int score1, int score2, int score3, int score4,
+                         int score5, int score6, int score7, int score8) {
+        this.user = user;
+        this.category = category;
+        this.score1 = score1;
+        this.score2 = score2;
+        this.score3 = score3;
+        this.score4 = score4;
+        this.score5 = score5;
+        this.score6 = score6;
+        this.score7 = score7;
+        this.score8 = score8;
+    }
 }

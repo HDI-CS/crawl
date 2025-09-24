@@ -1,6 +1,7 @@
 package kr.co.hdi.dataset.domain;
 
 import jakarta.persistence.*;
+import kr.co.hdi.crawl.domain.Product;
 import kr.co.hdi.global.domain.BaseTimeEntityWithDeletion;
 import kr.co.hdi.user.domain.UserEntity;
 import lombok.Getter;
@@ -12,7 +13,7 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 @Getter
 @NoArgsConstructor(access = PROTECTED)
-public class DatasetAssignment extends BaseTimeEntityWithDeletion {
+public class ProductDatasetAssignment extends BaseTimeEntityWithDeletion {
 
     @Id
     @GeneratedValue(strategy = IDENTITY)
@@ -22,10 +23,8 @@ public class DatasetAssignment extends BaseTimeEntityWithDeletion {
     @JoinColumn(name = "user_id")
     private UserEntity user;
 
-    @Enumerated(EnumType.STRING)
-    private DataType dataType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "data_id")
+    private Product product;
 
-    private int startIndex;
-
-    private int endIndex;
 }

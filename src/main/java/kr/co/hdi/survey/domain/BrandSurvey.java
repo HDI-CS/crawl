@@ -79,4 +79,5 @@ public class BrandSurvey extends BaseTimeEntityWithDeletion {
 
     private String survey30;
 
+    private String textSurvey;
 }

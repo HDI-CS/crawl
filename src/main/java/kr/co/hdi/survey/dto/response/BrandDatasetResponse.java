@@ -3,6 +3,8 @@ package kr.co.hdi.survey.dto.response;
 import kr.co.hdi.dataset.domain.Brand;
 
 public record BrandDatasetResponse(
+
+        String name,
         String id,
         String sectorCategory,
         String mainProductCategory,
@@ -14,6 +16,7 @@ public record BrandDatasetResponse(
 
     public static BrandDatasetResponse fromEntity(Brand brand) {
         return new BrandDatasetResponse(
+                brand.getBrandName(),
                 brand.getBrandCode(),
                 brand.getSectorCategory(),
                 brand.getMainProductCategory(),

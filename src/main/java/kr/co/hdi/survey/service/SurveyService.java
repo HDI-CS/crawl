@@ -113,10 +113,9 @@ public class SurveyService {
         // 정량 평가
         if (request.index() != null) {
             productResponse.updateResponse(request.index(), request.response());
+        } else {  // 정성 평가
+            productResponse.updateTextResponse(request.textResponse());
         }
-
-        // 정성 평가
-        productResponse.updateTextResponse(request.textResponse());
 
         productResponse.updateResponseStatus();
         productResponseRepository.save(productResponse);
@@ -173,10 +172,9 @@ public class SurveyService {
         // 정량 평가
         if (request.index() != null) {
             brandResponse.updateResponse(request.index(), request.response());
+        } else {   // 정성 평가
+            brandResponse.updateTextResponse(request.textResponse());
         }
-
-        // 정성 평가
-        brandResponse.updateTextResponse(request.textResponse());
 
         brandResponse.updateResponseStatus();
         brandResponseRepository.save(brandResponse);

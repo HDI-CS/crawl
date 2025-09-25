@@ -1,5 +1,6 @@
 package kr.co.hdi.survey.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
 import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
@@ -21,6 +22,7 @@ public class BrandSurveyController {
 
     private final SurveyService surveyService;
 
+    @Operation(summary = "유저에게 할당된 브랜드 설문 목록 조회")
     @GetMapping("/brand")
     public ResponseEntity<List<ProductSurveyDataResponse>> getBrandSurveys(
             @SessionAttribute(name = "userId", required = true) Long userId
@@ -29,7 +31,7 @@ public class BrandSurveyController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-
+    @Operation(summary = "브랜드 설문 상세 조회 (설문하러가기 누를때)")
     @GetMapping("/brand/{brandResponseId}")
     public ResponseEntity<BrandSurveyDetailResponse> getBrandSurveyDetail(
             @PathVariable Long brandResponseId
@@ -39,6 +41,7 @@ public class BrandSurveyController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @Operation(summary = "브랜드 설문 응답 한개 저장")
     @PostMapping("/brand/{brandResponseId}")
     public ResponseEntity<Void> saveBrandSurveyResponse(
             @PathVariable Long brandResponseId,
@@ -48,6 +51,7 @@ public class BrandSurveyController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "제출")
     @PostMapping("/brand/{brandResponseId}/submit")
     public ResponseEntity<Void> submitBrandSurvey(
             @PathVariable Long brandResponseId,
@@ -57,6 +61,7 @@ public class BrandSurveyController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "가중치 평가")
     @PostMapping("/scores/weighted")
     public ResponseEntity<Void> saveWeightedScores(
             @RequestBody List<WeightedScoreRequest> requests,

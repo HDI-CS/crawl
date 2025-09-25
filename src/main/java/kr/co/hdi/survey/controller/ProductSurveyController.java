@@ -26,6 +26,8 @@ public class ProductSurveyController {
     public ResponseEntity<List<ProductSurveyDataResponse>> getSurveys(
             @SessionAttribute(name = "userId", required = true) Long userId
     ) {
+        log.debug("Session userId: {}", userId);
+
         List<ProductSurveyDataResponse> response = surveyService.getAllProductSurveys(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }

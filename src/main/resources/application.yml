@@ -21,6 +21,12 @@ spring:
       ssl:
         enabled: true
 
+  servlet:
+    session:
+      timeout: 2h
+      cookie:
+        max-age: 7200
+
 etc:
   base-url: ${BASE_URL}
   local-image-path: /Users/leo/workspace/hdi_images

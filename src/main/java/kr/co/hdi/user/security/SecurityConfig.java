@@ -43,7 +43,7 @@ public class SecurityConfig {
                 )
 
                 .sessionManagement(session -> session
-                        .maximumSessions(3)
+                        .maximumSessions(10)
                         .maxSessionsPreventsLogin(false)
                 )
                 .exceptionHandling(ex -> ex

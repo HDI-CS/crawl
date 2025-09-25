@@ -56,19 +56,19 @@ public class AuthController {
         Role role = (Role) session.getAttribute("role");
         String name = (String) session.getAttribute("name");
 
-        AuthResponse response = AuthResponse.of(userId, email, name, role);
+        AuthResponse response = authService.getAuthInfo(userId, email, name, role);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @Operation(summary = "평가자 분야(BRAND, PRODUCT)와 모든 평가를 완료했는지 여부 조회")
-    @GetMapping("/me/info")
-    public ResponseEntity<AuthInfoResponse> getCurrentUserInfo(
-            @SessionAttribute(name = "userId", required = true) Long userId
-    ) {
-
-        AuthInfoResponse response = authService.getAuthInfo(userId);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
-    }
+//    @Operation(summary = "평가자 분야(BRAND, PRODUCT)와 모든 평가를 완료했는지 여부 조회")
+//    @GetMapping("/me/info")
+//    public ResponseEntity<AuthInfoResponse> getCurrentUserInfo(
+//            @SessionAttribute(name = "userId", required = true) Long userId
+//    ) {
+//
+//        AuthInfoResponse response = authService.getAuthInfo(userId, email, name, role);
+//        return ResponseEntity.status(HttpStatus.OK).body(response);
+//    }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(

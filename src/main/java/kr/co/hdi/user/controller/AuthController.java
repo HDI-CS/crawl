@@ -1,5 +1,6 @@
 package kr.co.hdi.user.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpSession;
 import kr.co.hdi.user.domain.Role;
 import kr.co.hdi.user.dto.request.AuthRequest;
@@ -58,6 +59,7 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @Operation(summary = "평가자 분야(BRAND, PRODUCT)와 모든 평가를 완료했는지 여부 조회")
     @GetMapping("/me/info")
     public ResponseEntity<AuthInfoResponse> getCurrentUserInfo(
             @SessionAttribute(name = "userId", required = true) Long userId

@@ -105,10 +105,12 @@ public class SurveyService {
 
 
     @Transactional
-    public void saveProductSurveyResponse(Long productResponseId, SurveyResponseRequest request) {
+    public void saveProductSurveyResponse(Long productResponseId, SurveyResponseRequest request, Long userId) {
 
         ProductResponse productResponse = productResponseRepository.findById(productResponseId)
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.PRODUCT_RESPONSE_NOT_FOUND));
+
+        checkUserAuthorization(productResponse, userId);
 
         // 정량 평가
         if (request.index() != null) {
@@ -119,6 +121,12 @@ public class SurveyService {
 
         productResponse.updateResponseStatus();
         productResponseRepository.save(productResponse);
+    }
+
+    private void checkUserAuthorization(ProductResponse productResponse, Long userId) {
+        if (!productResponse.getUser().getId().equals(userId)) {
+            throw new SurveyException(SurveyErrorCode.UNAUTHORIZED_ACCESS);
+        }
     }
 
     // 제품 응답 최종 제출

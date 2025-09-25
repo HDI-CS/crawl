@@ -1,6 +1,7 @@
 package kr.co.hdi.survey.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
 import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
@@ -25,7 +26,7 @@ public class BrandSurveyController {
     @Operation(summary = "유저에게 할당된 브랜드 설문 목록 조회")
     @GetMapping("/brand")
     public ResponseEntity<List<ProductSurveyDataResponse>> getBrandSurveys(
-            @SessionAttribute(name = "userId", required = true) Long userId
+            @Parameter(hidden = true) @SessionAttribute(name = "userId", required = true) Long userId
     ) {
         List<ProductSurveyDataResponse> response = surveyService.getAllBrandSurveys(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
@@ -55,7 +56,7 @@ public class BrandSurveyController {
     @PostMapping("/brand/{brandResponseId}/submit")
     public ResponseEntity<Void> submitBrandSurvey(
             @PathVariable Long brandResponseId,
-            @SessionAttribute(name = "userId", required = true) Long userId
+            @Parameter(hidden = true) @SessionAttribute(name = "userId", required = true) Long userId
     ) {
         surveyService.setBrandResponseStatusDone(brandResponseId, userId);
         return ResponseEntity.ok().build();
@@ -65,7 +66,7 @@ public class BrandSurveyController {
     @PostMapping("/scores/weighted")
     public ResponseEntity<Void> saveWeightedScores(
             @RequestBody List<WeightedScoreRequest> requests,
-            @SessionAttribute(name = "userId", required = true) Long userId
+            @Parameter(hidden = true) @SessionAttribute(name = "userId", required = true) Long userId
     ) {
 
         surveyService.saveWeightedScores(userId, requests);

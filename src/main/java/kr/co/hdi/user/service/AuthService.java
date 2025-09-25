@@ -21,7 +21,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthResponse loginOrRegister(String email, String password) {
+    public AuthResponse login(String email, String password) {
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
@@ -29,6 +29,28 @@ public class AuthService {
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD, "잘못된 비밀번호입니다.");
         }
 
+        return AuthResponse.from(user);
+    }
+
+    public AuthResponse createUser(String email, String password, String name) {
+        if (userRepository.existsByEmail(email)) {
+            throw new AuthException(AuthErrorCode.USER_ALREADY_EXISTS, "이미 존재하는 이메일입니다.");
+        }
+
+        UserEntity user = UserEntity.createUser(email, passwordEncoder.encode(password), name);
+
+        userRepository.save(user);
+        return AuthResponse.from(user);
+    }
+
+    public AuthResponse createAdmin(String email, String password, String name) {
+        if (userRepository.existsByEmail(email)) {
+            throw new AuthException(AuthErrorCode.USER_ALREADY_EXISTS, "이미 존재하는 이메일입니다.");
+        }
+
+        UserEntity user = UserEntity.createAdmin(email, passwordEncoder.encode(password), name);
+
+        userRepository.save(user);
         return AuthResponse.from(user);
     }
 

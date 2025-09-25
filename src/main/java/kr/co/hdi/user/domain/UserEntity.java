@@ -37,24 +37,26 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
     private Boolean surveyDone;
 
     // V1에서 사용하지 않음
-    public static UserEntity createUser(String email, String encodePassword) {
+    public static UserEntity createUser(String email, String encodePassword, String name) {
         return UserEntity.builder()
                 .enabled(true)
                 .role(Role.USER)
 
                 .email(email)
                 .password(encodePassword)
+                .name(name)
 
                 .build();
     }
 
-    public static UserEntity createAdmin(String email, String encodePassword) {
+    public static UserEntity createAdmin(String email, String encodePassword, String name) {
         return UserEntity.builder()
                 .enabled(true)
                 .role(Role.ADMIN)
 
                 .email(email)
                 .password(encodePassword)
+                .name(name)
 
                 .build();
     }
@@ -64,7 +66,8 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
     }
 
     @Builder(access = PRIVATE)
-    private UserEntity(String password, boolean enabled, Role role, String email) {
+    private UserEntity(String password, boolean enabled, Role role, String email, String name) {
+        this.name = name;
         this.email = email;
         this.password = password;
         this.enabled = enabled;

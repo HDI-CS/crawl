@@ -46,6 +46,8 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
                 .password(encodePassword)
                 .name(name)
 
+                .surveyDone(false)
+
                 .build();
     }
 
@@ -66,12 +68,14 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
     }
 
     @Builder(access = PRIVATE)
-    private UserEntity(String password, boolean enabled, Role role, String email, String name) {
+    private UserEntity(String password, boolean enabled, Role role, String email, String name, UserType userType, Boolean surveyDone) {
         this.name = name;
         this.email = email;
         this.password = password;
         this.enabled = enabled;
         this.role = role;
+        this.userType = userType;
+        this.surveyDone = surveyDone;
     }
 
 }

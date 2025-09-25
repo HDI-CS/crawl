@@ -32,7 +32,6 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
     @Enumerated(STRING)
     private Role role;
 
-    @Enumerated(STRING)
     private UserType userType;
 
     private Boolean surveyDone;

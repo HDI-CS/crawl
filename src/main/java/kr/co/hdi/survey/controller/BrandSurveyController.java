@@ -64,7 +64,7 @@ public class BrandSurveyController {
     }
 
     @Operation(summary = "가중치 평가")
-    @PostMapping("/scores/weighted")
+    @PatchMapping("/scores/weighted")
     public ResponseEntity<Void> saveWeightedScores(
             @RequestBody List<WeightedScoreRequest> requests,
             @Parameter(hidden = true) @SessionAttribute(name = "userId", required = true) Long userId

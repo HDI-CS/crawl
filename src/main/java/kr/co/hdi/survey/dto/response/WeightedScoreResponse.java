@@ -1,8 +1,8 @@
-package kr.co.hdi.survey.dto.request;
+package kr.co.hdi.survey.dto.response;
 
 import kr.co.hdi.survey.domain.DatasetCategory;
 
-public record WeightedScoreRequest(
+public record WeightedScoreResponse(
 
         Long id,
         DatasetCategory category,

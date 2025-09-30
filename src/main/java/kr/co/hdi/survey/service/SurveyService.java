@@ -221,20 +221,78 @@ public class SurveyService {
 
         List<WeightedScore> scores = new ArrayList<>();
         for (WeightedScoreRequest request : requests) {
-            scores.add(
-                    WeightedScore.createWeightedScore(
-                            user,
-                            request.category(),
-                            request.score1(),
-                            request.score2(),
-                            request.score3(),
-                            request.score4(),
-                            request.score5(),
-                            request.score6(),
-                            request.score7(),
-                            request.score8())
-            );
+
+            WeightedScore score;
+
+            if (request.id() != null) {
+                // 기존 엔티티 조회
+                score = weightedScoreRepository.findById(request.id())
+                        .orElseThrow(() -> new IllegalArgumentException("WeightedScore not found with id: " + request.id()));
+
+                // 값 갱신
+                score.updateScores(
+                        request.score1(),
+                        request.score2(),
+                        request.score3(),
+                        request.score4(),
+                        request.score5(),
+                        request.score6(),
+                        request.score7(),
+                        request.score8()
+                );
+
+            } else {
+                // 새 엔티티 생성
+                score = WeightedScore.createWeightedScore(
+                        user,
+                        request.category(),
+                        request.score1(),
+                        request.score2(),
+                        request.score3(),
+                        request.score4(),
+                        request.score5(),
+                        request.score6(),
+                        request.score7(),
+                        request.score8()
+                );
+            }
+            scores.add(score);
+//            scores.add(
+//                    WeightedScore.createWeightedScore(
+//                            user,
+//                            request.category(),
+//                            request.score1(),
+//                            request.score2(),
+//                            request.score3(),
+//                            request.score4(),
+//                            request.score5(),
+//                            request.score6(),
+//                            request.score7(),
+//                            request.score8())
+//            );
         }
         weightedScoreRepository.saveAll(scores);
+    }
+
+    public List<WeightedScoreResponse> getWeightedResponse(Long userId) {
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        List<WeightedScore> scores = weightedScoreRepository.findByUser(user);
+        return scores.stream()
+                .map(score -> new WeightedScoreResponse(
+                        score.getId(),
+                        score.getCategory(),
+                        score.getScore1(),
+                        score.getScore2(),
+                        score.getScore3(),
+                        score.getScore4(),
+                        score.getScore5(),
+                        score.getScore6(),
+                        score.getScore7(),
+                        score.getScore8()
+                ))
+                .toList();
     }
 }

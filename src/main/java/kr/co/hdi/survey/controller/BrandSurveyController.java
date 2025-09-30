@@ -6,6 +6,7 @@ import kr.co.hdi.survey.dto.request.SurveyResponseRequest;
 import kr.co.hdi.survey.dto.request.WeightedScoreRequest;
 import kr.co.hdi.survey.dto.response.BrandSurveyDetailResponse;
 import kr.co.hdi.survey.dto.response.ProductSurveyDataResponse;
+import kr.co.hdi.survey.dto.response.WeightedScoreResponse;
 import kr.co.hdi.survey.service.SurveyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,5 +72,14 @@ public class BrandSurveyController {
 
         surveyService.saveWeightedScores(userId, requests);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/scores/weighted")
+    public ResponseEntity<List<WeightedScoreResponse>> getWeightesScores(
+            @Parameter(hidden = true) @SessionAttribute(name = "userId", required = true) Long userId
+    ) {
+
+        List<WeightedScoreResponse> response = surveyService.getWeightedResponse(userId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

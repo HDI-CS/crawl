@@ -75,6 +75,7 @@ public class ProductResponse extends BaseTimeEntityWithDeletion {
     private Integer response41;
 
 
+    @Column(columnDefinition = "text")
     private String textResponse;
 
 

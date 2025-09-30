@@ -93,6 +93,7 @@ public class BrandResponse extends BaseTimeEntityWithDeletion {
 
     private Integer response30;
 
+    @Column(columnDefinition = "text")
     private String textResponse;
 
     public static BrandResponse createBrandResponse(UserEntity user, Brand brand) {

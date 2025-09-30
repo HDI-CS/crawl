@@ -43,6 +43,18 @@ public class WeightedScore extends BaseTimeEntityWithDeletion {
 
     private int score8;   // 목적성
 
+    public void updateScores(int score1, int score2, int score3, int score4, int score5, int score6, int score7, int score8) {
+
+        this.score1 = score1;
+        this.score2 = score2;
+        this.score3 = score3;
+        this.score4 = score4;
+        this.score5 = score5;
+        this.score6 = score6;
+        this.score7 = score7;
+        this.score8 = score8;
+    }
+
     public static WeightedScore createWeightedScore(
             UserEntity user, DatasetCategory category,
             int score1, int score2, int score3, int score4,

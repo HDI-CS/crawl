@@ -1,5 +1,6 @@
 package kr.co.hdi.dataset.domain;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -31,6 +32,7 @@ public class Brand extends BaseTimeEntityWithDeletion {
 
     private String target;
 
+    @Column(columnDefinition = "text")
     private String referenceUrl;
 
     private String image;

@@ -364,7 +364,52 @@ public class IndustryData extends BaseTimeEntityWithDeletion {
         }
 
 
+
+
+    }
+    public void updateImages(
+            String detailKey,
+            String frontKey,
+            String sideKey,
+            String side2Key,
+            String side3Key,
+
+            String detailName,
+            String frontName,
+            String sideName,
+            String side2Name,
+            String side3Name
+    ) {
+        if (detailKey != null) {
+            this.detailImagePath = detailKey;
+            this.originalDetailImagePath = detailName;
+        }
+
+        if (frontKey != null) {
+            this.frontImagePath = frontKey;
+            this.originalFrontImagePath = frontName;
+        }
+
+        if (sideKey != null) {
+            this.sideImagePath = sideKey;
+            this.originalSideImagePath = sideName;
+        }
+
+        if (side2Key != null) {
+            this.side2ImagePath = side2Key;
+            this.originalSide2ImagePath = side2Name;
+        }
+
+        if (side3Key != null) {
+            this.side3ImagePath = side3Key;
+            this.originalSide3ImagePath = side3Name;
+        }
     }
 
+    public void updateChargeTime(String chargeTime) {
+        if (chargeTime != null) {
+            this.chargeTime = chargeTime;
+        }
+    }
 
 }

@@ -2,6 +2,7 @@ package kr.co.hdi.domain.data.repository;
 
 import kr.co.hdi.admin.data.dto.response.VisualDataIdsResponse;
 import kr.co.hdi.domain.data.entity.VisualData;
+import kr.co.hdi.domain.data.enums.VisualDataCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,5 +45,11 @@ public interface VisualDataRepository extends JpaRepository<VisualData, Long>, V
     """)
     Optional<LocalDateTime> findLastModifiedAtByYearId(Long yearId);
 
-    Optional<VisualData> findByBrandCode(String dataCode);
+
+    // 삭제
+    List<VisualData> findByBrandCode(String dataCode);
+    List<VisualData> findByBrandCodeAndVisualDataCategory(
+            String brandCode,
+            VisualDataCategory category
+    );
 }

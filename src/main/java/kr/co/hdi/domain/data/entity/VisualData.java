@@ -97,7 +97,7 @@ public class VisualData extends BaseTimeEntityWithDeletion {
         v.releaseYear = request.releaseYear();
 
         v.originalLogoImage = request.originalLogoImage();
-        v.logoImage = "2026/VI/" + UUID.randomUUID();
+        v.logoImage = "2026/VI/" + request.originalLogoImage();
 
         return v;
     }
@@ -201,6 +201,15 @@ public class VisualData extends BaseTimeEntityWithDeletion {
             } catch (NumberFormatException e) {
                 this.brandCodeInteger = null;
             }
+        }
+    }
+
+    public void updateImages(
+            String key,
+            String name) {
+        if(key != null ){
+            this.logoImage = key;
+            this.originalLogoImage = name;
         }
     }
 

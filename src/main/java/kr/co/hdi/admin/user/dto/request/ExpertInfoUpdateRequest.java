@@ -9,6 +9,7 @@ public record ExpertInfoUpdateRequest(
         String academic,
         String expertise,
         String company,
-        String note
+        String note,
+        String password
 ) {
 }

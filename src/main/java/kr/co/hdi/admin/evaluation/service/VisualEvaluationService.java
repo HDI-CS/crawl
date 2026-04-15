@@ -121,7 +121,8 @@ public class VisualEvaluationService implements EvaluationService {
                         ));
 
         return users.stream()
-                .map(user -> createEvaluationStatus(
+                .map(user ->
+                        createEvaluationStatus(
                         user,
                         responsesByUser.getOrDefault(user.getId(), Map.of()),
                         weightedByUserId.get(user.getId()),
@@ -147,13 +148,16 @@ public class VisualEvaluationService implements EvaluationService {
             List<CurrentVisualCategory> categories
 
     ) {
+
         // 데이터 id 오름차순으로 완료/미완료 상태를 담는 list
         List<EvaluationStatusResponse> statuses = userDataIds.stream()
                 .sorted()
                 .map(dataId -> {
                     List<UserResponsePair> list = userResponses.get(dataId);
                     boolean isDone = isQualitativeDone(list, surveyCount);
+
                     return EvaluationStatusResponse.of(EvaluationType.QUALITATIVE, isDone);
+
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
 

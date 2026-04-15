@@ -153,5 +153,6 @@ public class UserEntity extends BaseTimeEntityWithDeletion {
         this.expertise = request.expertise();
         this.company = request.company();
         this.note = request.note();
+        this.password = request.password();
     }
 }

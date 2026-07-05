@@ -44,6 +44,9 @@ public class VisualData extends BaseTimeEntityWithDeletion {
     @Column(columnDefinition = "text")
     private String designDescription;
 
+    @Column(columnDefinition = "text")
+    private String originalDescription;
+
     private String releaseYear;
 
     @Column(columnDefinition = "text")
@@ -94,6 +97,7 @@ public class VisualData extends BaseTimeEntityWithDeletion {
         v.contentType = request.contentType();
         v.visualType = request.visualType();
         v.designDescription = request.designDescription();
+        v.originalDescription = request.originalDescription();
         v.releaseYear = request.releaseYear();
 
         v.originalLogoImage = request.originalLogoImage();
@@ -125,6 +129,7 @@ public class VisualData extends BaseTimeEntityWithDeletion {
         copy.contentType = this.contentType;
         copy.visualType = this.visualType;
         copy.designDescription = this.designDescription;
+        copy.originalDescription = this.originalDescription;
         copy.releaseYear = this.releaseYear;
 
         copy.visualDataCategory = this.visualDataCategory;
@@ -180,6 +185,9 @@ public class VisualData extends BaseTimeEntityWithDeletion {
         if (request.designDescription() != null) {
             this.designDescription = request.designDescription();
         }
+        if (request.originalDescription() != null) {
+            this.originalDescription = request.originalDescription();
+        }
         if (request.releaseYear() != null) {
             this.releaseYear = request.releaseYear();
         }
@@ -203,5 +211,7 @@ public class VisualData extends BaseTimeEntityWithDeletion {
             }
         }
     }
+
+
 
 }

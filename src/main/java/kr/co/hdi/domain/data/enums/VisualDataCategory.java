@@ -6,6 +6,6 @@ public enum VisualDataCategory {
     COSMETIC, FB,
 
     // 2026
-    POSTER
+    POSTER, PACKAGE
 
 }

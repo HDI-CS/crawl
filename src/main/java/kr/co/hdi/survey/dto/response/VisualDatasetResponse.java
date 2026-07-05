@@ -22,6 +22,7 @@ public record VisualDatasetResponse(
         String visualType,
         String releaseYear,
         String designDescription,
+        String originalDescription,
         VisualDataCategory visualDataCategory
 
 ) {
@@ -43,6 +44,7 @@ public record VisualDatasetResponse(
                 data.getVisualType(),
                 data.getReleaseYear(),
                 data.getDesignDescription(),
+                data.getOriginalDescription(),
                 data.getVisualDataCategory()
 
         );

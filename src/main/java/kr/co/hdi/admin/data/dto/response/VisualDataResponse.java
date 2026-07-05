@@ -19,6 +19,7 @@ public record VisualDataResponse(
         String contentType,
         String visualType,
         String designDescription,
+        String originalDescription,
         String releaseYear,
 
         String logoImage
@@ -41,6 +42,7 @@ public record VisualDataResponse(
                 v.getContentType(),
                 v.getVisualType(),
                 v.getDesignDescription(),
+                v.getOriginalDescription(),
                 v.getReleaseYear(),
 
                 image

@@ -50,8 +50,6 @@ public interface IndustryDataRepository extends JpaRepository<IndustryData, Long
 
     Optional<IndustryData> findByOriginalId(String dataCode);
 
-
-
 }
 
 

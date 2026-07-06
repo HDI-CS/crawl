@@ -18,6 +18,7 @@ public record VisualDataRequest(
         String contentType,
         String visualType,
         String designDescription,
+        String originalDescription,
         String releaseYear,
 
 

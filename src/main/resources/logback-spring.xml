@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <springProfile name="local">
+        <property name="LOG_PATH" value="./logs"/>
+    </springProfile>
+    <springProfile name="!local">
+        <property name="LOG_PATH" value="/app/logs"/>
+    </springProfile>
+
+
     <!-- 콘솔 출력 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
@@ -8,12 +16,13 @@
         </encoder>
     </appender>
 
+
     <!-- 파일 저장 (날짜별로 자동 분리) -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/app/logs/api.log</file>
+        <file>${LOG_PATH}/api.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 날짜별로 파일 분리, 60일치 보관 -->
-            <fileNamePattern>logs/api.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${LOG_PATH}/api.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
             <maxHistory>60</maxHistory>
         </rollingPolicy>
         <encoder>

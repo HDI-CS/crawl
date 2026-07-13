@@ -50,6 +50,20 @@ public interface IndustryDataRepository extends JpaRepository<IndustryData, Long
 
     Optional<IndustryData> findByOriginalId(String dataCode);
 
+    @Query("""
+    SELECT i
+    FROM IndustryData i
+    WHERE i.deletedAt IS NULL
+        AND i.year.id = :yearId
+        AND i.industryDataCategory = :category
+        AND i.originalId = :code
+    """)
+    List<IndustryData> findAllByYearIdAndCategoryAndOriginalId(
+            @Param("yearId") Long yearId,
+            @Param("category") IndustryDataCategory category,
+            @Param("code") String code
+    );
+
 }
 
 

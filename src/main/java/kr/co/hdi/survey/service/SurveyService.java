@@ -286,7 +286,6 @@ public class SurveyService {
         UserYearRound userYearRound = userYearRoundRepository.findByAssessmentRoundIdAndUserId(currentSurvey.getAssessmentRoundId(), userId)
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.NOT_FOUND_USER_YEAR_ROUND));
 
-        //
         VisualDataAssignment assignment = visualDataAssignmentRepository.findByUserYearRoundIdAndVisualDataId(userYearRound.getId(), dataId)
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.NOT_FOUND_DATA_ASSIGNMENT));
 
@@ -295,14 +294,27 @@ public class SurveyService {
         VisualSurvey survey = visualSurveyRepository.findById(request.surveyId())
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.SURVEY_NOT_FOUND));
 
+        applyVisualSurveyResponse(userYearRound, assignment, survey, dataId, request);
+    }
+
+    /*
+    시각 디자인 응답 저장 - 공통 로직
+    (호출부에서 currentSurvey/userYearRound/assignment/survey를 이미 조회해둔 경우를 위한 내부 메서드.
+     여러 문항을 한 번에 저장하는 saveAllVisualSurvey/saveAllAndSubmitVisualSurvey에서
+     문항 수만큼 위 조회를 반복하지 않도록 분리했다.)
+     */
+    private void applyVisualSurveyResponse(
+            UserYearRound userYearRound, VisualDataAssignment assignment,
+            VisualSurvey survey, Long dataId, SurveyResponseRequest request
+    ) {
         // 응답 조회 (없으면 생성 - 동시 요청으로 중복 row가 생기지 않도록 안전하게 생성)
         VisualResponse visualResponse = visualResponseRepository
                 .findByUserYearRoundIdAndVisualSurveyIdAndVisualDataId(
                         userYearRound.getId(),
-                        request.surveyId(),
+                        survey.getId(),
                         dataId
                 )
-                .orElseGet(() -> createVisualResponseSafely(userYearRound, assignment, dataId, request.surveyId()));
+                .orElseGet(() -> createVisualResponseSafely(userYearRound, assignment, dataId, survey.getId()));
 
         // 응답값 갱신
         if (survey.getSurveyType() == SurveyType.NUMBER) {
@@ -351,9 +363,7 @@ public class SurveyService {
             Long dataId, Long userId, List<SurveyResponseRequest> requests) {
 
         // 1. 전체 응답 저장
-        for (SurveyResponseRequest request : requests) {
-            saveVisualSurveyResponse(dataId, userId, request);
-        }
+        saveAllVisualSurveyResponses(dataId, userId, requests);
 
         // 2. 제출
         submitVisualSurvey(dataId, userId);
@@ -364,10 +374,34 @@ public class SurveyService {
     public void saveAllVisualSurvey(
             Long dataId, Long userId, List<SurveyResponseRequest> requests) {
 
-        for (SurveyResponseRequest request : requests) {
-            saveVisualSurveyResponse(dataId, userId, request);
-        }
+        saveAllVisualSurveyResponses(dataId, userId, requests);
         // submitVisualSurvey 호출 안 함
+    }
+
+    /*
+    시각 디자인 전체 응답 저장 - 공통 로직
+    (currentSurvey/userYearRound/assignment/설문 문항 목록을 요청 개수만큼 반복 조회하지 않도록
+     루프 밖에서 한 번만 조회한다.)
+     */
+    private void saveAllVisualSurveyResponses(Long dataId, Long userId, List<SurveyResponseRequest> requests) {
+
+        CurrentSurvey currentSurvey = getCurrentSurvey(DomainType.VISUAL);
+        UserYearRound userYearRound = userYearRoundRepository.findByAssessmentRoundIdAndUserId(currentSurvey.getAssessmentRoundId(), userId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.NOT_FOUND_USER_YEAR_ROUND));
+
+        VisualDataAssignment assignment = visualDataAssignmentRepository.findByUserYearRoundIdAndVisualDataId(userYearRound.getId(), dataId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.NOT_FOUND_DATA_ASSIGNMENT));
+
+        Map<Long, VisualSurvey> surveyById = visualSurveyRepository.findAllByYear(currentSurvey.getYearId()).stream()
+                .collect(Collectors.toMap(VisualSurvey::getId, s -> s));
+
+        for (SurveyResponseRequest request : requests) {
+            VisualSurvey survey = surveyById.get(request.surveyId());
+            if (survey == null) {
+                throw new SurveyException(SurveyErrorCode.SURVEY_NOT_FOUND);
+            }
+            applyVisualSurveyResponse(userYearRound, assignment, survey, dataId, request);
+        }
     }
 
 
@@ -389,14 +423,27 @@ public class SurveyService {
         IndustrySurvey survey = industrySurveyRepository.findById(request.surveyId())
                 .orElseThrow(() -> new SurveyException(SurveyErrorCode.SURVEY_NOT_FOUND));
 
+        applyIndustrySurveyResponse(userYearRound, assignment, survey, dataId, request);
+    }
+
+    /*
+    산업 디자인 응답 저장 - 공통 로직
+    (호출부에서 currentSurvey/userYearRound/assignment/survey를 이미 조회해둔 경우를 위한 내부 메서드.
+     여러 문항을 한 번에 저장하는 saveAllIndustrySurvey/saveAllAndSubmitIndustrySurvey에서
+     문항 수만큼 위 조회를 반복하지 않도록 분리했다.)
+     */
+    private void applyIndustrySurveyResponse(
+            UserYearRound userYearRound, IndustryDataAssignment assignment,
+            IndustrySurvey survey, Long dataId, SurveyResponseRequest request
+    ) {
         // 응답 조회 (없으면 생성 - 동시 요청으로 중복 row가 생기지 않도록 안전하게 생성)
         IndustryResponse industryResponse = industryResponseRepository
                 .findByUserYearRoundIdAndIndustrySurveyIdAndIndustryDataId(
                         userYearRound.getId(),
-                        request.surveyId(),
+                        survey.getId(),
                         dataId
                 )
-                .orElseGet(() -> createIndustryResponseSafely(userYearRound, assignment, dataId, request.surveyId()));
+                .orElseGet(() -> createIndustryResponseSafely(userYearRound, assignment, dataId, survey.getId()));
 
         // 응답값 갱신
         if (survey.getSurveyType() == SurveyType.NUMBER) {
@@ -437,10 +484,8 @@ public class SurveyService {
     public void saveAllAndSubmitIndustrySurvey(
             Long dataId, Long userId, List<SurveyResponseRequest> requests) {
 
-        // 1. 전체 응답 저장 (기존 메서드 재활용)
-        for (SurveyResponseRequest request : requests) {
-            saveIndustrySurveyResponse(dataId, userId, request);
-        }
+        // 1. 전체 응답 저장
+        saveAllIndustrySurveyResponses(dataId, userId, requests);
 
         // 2. 제출 (기존 메서드 재활용)
         submitIndustrySurvey(dataId, userId);
@@ -449,10 +494,34 @@ public class SurveyService {
     // 임시저장용 (제출 없음)
     @Transactional
     public void saveAllIndustrySurvey(Long dataId, Long userId, List<SurveyResponseRequest> requests) {
-        for (SurveyResponseRequest request : requests) {
-            saveIndustrySurveyResponse(dataId, userId, request);
-        }
+        saveAllIndustrySurveyResponses(dataId, userId, requests);
         // submitIndustrySurvey 호출 안 함
+    }
+
+    /*
+    산업 디자인 전체 응답 저장 - 공통 로직
+    (currentSurvey/userYearRound/assignment/설문 문항 목록을 요청 개수만큼 반복 조회하지 않도록
+     루프 밖에서 한 번만 조회한다.)
+     */
+    private void saveAllIndustrySurveyResponses(Long dataId, Long userId, List<SurveyResponseRequest> requests) {
+
+        CurrentSurvey currentSurvey = getCurrentSurvey(DomainType.INDUSTRY);
+        UserYearRound userYearRound = userYearRoundRepository.findByAssessmentRoundIdAndUserId(currentSurvey.getAssessmentRoundId(), userId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.NOT_FOUND_USER_YEAR_ROUND));
+
+        IndustryDataAssignment assignment = industryDataAssignmentRepository.findByUserYearRoundIdAndIndustryDataId(userYearRound.getId(), dataId)
+                .orElseThrow(() -> new SurveyException(SurveyErrorCode.NOT_FOUND_DATA_ASSIGNMENT));
+
+        Map<Long, IndustrySurvey> surveyById = industrySurveyRepository.findAllByYear(currentSurvey.getYearId()).stream()
+                .collect(Collectors.toMap(IndustrySurvey::getId, s -> s));
+
+        for (SurveyResponseRequest request : requests) {
+            IndustrySurvey survey = surveyById.get(request.surveyId());
+            if (survey == null) {
+                throw new SurveyException(SurveyErrorCode.SURVEY_NOT_FOUND);
+            }
+            applyIndustrySurveyResponse(userYearRound, assignment, survey, dataId, request);
+        }
     }
 
     /*

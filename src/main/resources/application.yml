@@ -41,6 +41,9 @@ server:
     enabled: true
     mime-types: text/html,text/plain,application/json
     min-response-size: 1024
+  tomcat:
+    threads:
+      max: 60
 
 aws:
   s3:

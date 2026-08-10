@@ -40,7 +40,9 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	// Selenium
-	implementation 'org.seleniumhq.selenium:selenium-java:4.24.0'
+	// 4.24.0으로 명시했지만 다른 의존성이 더 최신 버전을 끌어와 실제로는 4.31.0이 쓰이고 있었음.
+	// 실제 해석되는 버전과 일치시켜 혼선 방지.
+	implementation 'org.seleniumhq.selenium:selenium-java:4.31.0'
 
 	// WebDriverManager
 	implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'

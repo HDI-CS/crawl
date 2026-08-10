@@ -36,6 +36,11 @@ spring:
       cookie:
         max-age: 7200
 
+server:
+  compression:
+    enabled: true
+    mime-types: text/html,text/plain,application/json
+    min-response-size: 1024
 
 aws:
   s3:

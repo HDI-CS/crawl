@@ -15,6 +15,16 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 @Getter
 @NoArgsConstructor(access = PROTECTED)
+@Table(
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_visualResponse_userYearRound_survey_data",
+                columnNames = {
+                        "user_year_round_user_year_round_id",
+                        "visual_survey_visual_survey_id",
+                        "visual_data_visual_data_id"
+                }
+        )
+)
 public class VisualResponse extends BaseTimeEntityWithDeletion {
 
     @Id

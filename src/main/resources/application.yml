@@ -19,7 +19,16 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       ssl:
-        enabled: true
+        # docker-compose.yml의 redis 컨테이너(redis:alpine)는 TLS 없이 뜬다.
+        # 운영 배포(be_deploy.yml)도 이 docker-compose로 나가므로 기본값은 false.
+        # TLS 종료가 되는 redis(ElastiCache 등)로 옮기면 REDIS_SSL_ENABLED=true로 설정.
+        enabled: ${REDIS_SSL_ENABLED:false}
+
+  session:
+    store-type: redis
+    timeout: 2h
+    redis:
+      namespace: hdi:session
 
   servlet:
     session:
@@ -27,6 +36,14 @@ spring:
       cookie:
         max-age: 7200
 
+server:
+  compression:
+    enabled: true
+    mime-types: text/html,text/plain,application/json
+    min-response-size: 1024
+  tomcat:
+    threads:
+      max: 60
 
 aws:
   s3:

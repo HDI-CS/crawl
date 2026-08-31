@@ -89,16 +89,16 @@ public class IndustryData extends BaseTimeEntityWithDeletion {
     @Column(columnDefinition = "text")
     private String originalSideImagePath;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "side2_image_path", columnDefinition = "text")
     private String side2ImagePath;     // 측면 2 이미지 S3 Key
 
-    @Column(columnDefinition = "text")
+    @Column(name = "original_side2_image_path", columnDefinition = "text")
     private String originalSide2ImagePath;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "side3_image_path", columnDefinition = "text")
     private String side3ImagePath;     // 측면 3 이미지 S3 Key
 
-    @Column(columnDefinition = "text")
+    @Column(name = "original_side3_image_path", columnDefinition = "text")
     private String originalSide3ImagePath;
 
     private Integer originalIdInteger;
@@ -370,26 +370,20 @@ public class IndustryData extends BaseTimeEntityWithDeletion {
             String originalDetailName, String originalFrontName, String originalSideName,
             String originalSide2Name, String originalSide3Name
     ) {
-        if (detailKey != null) {
-            this.detailImagePath = detailKey;
-            this.originalDetailImagePath = originalDetailName;
-        }
-        if (frontKey != null) {
-            this.frontImagePath = frontKey;
-            this.originalFrontImagePath = originalFrontName;
-        }
-        if (sideKey != null) {
-            this.sideImagePath = sideKey;
-            this.originalSideImagePath = originalSideName;
-        }
-        if (side2Key != null) {
-            this.side2ImagePath = side2Key;
-            this.originalSide2ImagePath = originalSide2Name;
-        }
-        if (side3Key != null) {
-            this.side3ImagePath = side3Key;
-            this.originalSide3ImagePath = originalSide3Name;
-        }
+        this.detailImagePath = detailKey;
+        this.originalDetailImagePath = originalDetailName;
+
+        this.frontImagePath = frontKey;
+        this.originalFrontImagePath = originalFrontName;
+
+        this.sideImagePath = sideKey;
+        this.originalSideImagePath = originalSideName;
+
+        this.side2ImagePath = side2Key;
+        this.originalSide2ImagePath = originalSide2Name;
+
+        this.side3ImagePath = side3Key;
+        this.originalSide3ImagePath = originalSide3Name;
     }
 
 }

@@ -31,6 +31,16 @@ public class ExpertUserController {
         List<ExpertInfoResponse> responses = expertUserService.getExpertInfo(type);
         return ResponseEntity.status(HttpStatus.OK).body(responses);
     }
+    @PutMapping("/{memberId}")
+    @Operation(summary = "전문가 인적사항 수정")
+    public ResponseEntity<Void> updateExpertInfo(
+            @PathVariable UserType type,
+            @PathVariable Long memberId,
+            @RequestBody ExpertInfoUpdateRequest request) {
+
+        expertUserService.updateExpertInfo(request, memberId);
+        return ResponseEntity.ok().build();
+    }
 
     @PostMapping
     @Operation(summary = "전문가 인적사항 등록")
@@ -42,16 +52,6 @@ public class ExpertUserController {
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/{memberId}")
-    @Operation(summary = "전문가 인적사항 수정")
-    public ResponseEntity<Void> updateExpertInfo(
-            @PathVariable UserType type,
-            @PathVariable Long memberId,
-            @RequestBody ExpertInfoUpdateRequest request) {
-
-        expertUserService.updateExpertInfo(request, memberId);
-        return ResponseEntity.ok().build();
-    }
 
     @GetMapping("/search")
     @Operation(summary = "전문가 페이지에서 검색")

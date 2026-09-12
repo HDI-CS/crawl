@@ -26,9 +26,21 @@ public class UserYearRound extends BaseTimeEntityWithDeletion {
     @ManyToOne(fetch = FetchType.LAZY)
     private AssessmentRound assessmentRound;
 
+    // 엑셀 매칭 업로드 시 부여되는 팀 라벨 (예: "팀A"). 회차별로 달라질 수 있어 유저가 아닌 여기에 둔다.
+    private String team;
+
     @Builder
-    public UserYearRound(UserEntity user, AssessmentRound assessmentRound) {
+    public UserYearRound(UserEntity user, AssessmentRound assessmentRound, String team) {
         this.user = user;
         this.assessmentRound = assessmentRound;
+        this.team = team;
+    }
+
+    public UserYearRound(UserEntity user, AssessmentRound assessmentRound) {
+        this(user, assessmentRound, null);
+    }
+
+    public void updateTeam(String team) {
+        this.team = team;
     }
 }

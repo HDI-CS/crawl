@@ -2,8 +2,10 @@ package kr.co.hdi.admin.assignment.service;
 
 import kr.co.hdi.admin.assignment.dto.query.AssignmentDiff;
 import kr.co.hdi.admin.assignment.dto.query.AssignmentRow;
+import kr.co.hdi.admin.assignment.dto.query.TeamAssignmentBlock;
 import kr.co.hdi.admin.assignment.dto.request.AssignmentDataRequest;
 import kr.co.hdi.admin.assignment.dto.response.AssignmentDataResponse;
+import kr.co.hdi.admin.assignment.dto.response.AssignmentImportResultResponse;
 import kr.co.hdi.admin.assignment.dto.response.AssignmentResponse;
 import kr.co.hdi.admin.assignment.exception.AssignmentErrorCode;
 import kr.co.hdi.admin.assignment.exception.AssignmentException;
@@ -33,6 +35,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
@@ -51,6 +54,7 @@ public class IndustryAssignmentService implements AssignmentService {
     private final UserYearRoundRepository userYearRoundRepository;
     private final AssessmentRoundRepository assessmentRoundRepository;
     private final IndustryDataAssignmentRepository industryDataAssignmentRepository;
+    private final AssignmentExcelParser assignmentExcelParser;
 
     @Override
     public DomainType getDomainType() {
@@ -315,6 +319,74 @@ public class IndustryAssignmentService implements AssignmentService {
         industryDataAssignmentRepository.saveAll(
                 IndustryDataAssignment.createAll(userYearRound, industryDataList, year.getSurveyCount())
         );
+    }
+
+    /*
+    전문가-데이터 매칭 엑셀 업로드 (VisualAssignmentService.importDatasetAssignmentExcel 참고)
+     */
+    @Override
+    @Transactional
+    public AssignmentImportResultResponse importDatasetAssignmentExcel(Long assessmentRoundId, MultipartFile file) {
+
+        AssessmentRound assessmentRound = getAssessmentRound(assessmentRoundId);
+        Year year = assessmentRound.getYear();
+
+        List<TeamAssignmentBlock> blocks = assignmentExcelParser.parse(file);
+
+        Map<String, IndustryData> dataByCode = industryDataRepository.findByYearIdAndDeletedAtIsNull(year.getId())
+                .stream()
+                .collect(Collectors.toMap(IndustryData::getOriginalId, d -> d, (a, b) -> a));
+
+        List<String> warnings = new ArrayList<>();
+        int teamsProcessed = 0;
+        int added = 0;
+        int removed = 0;
+
+        for (TeamAssignmentBlock block : blocks) {
+
+            String teamLabel = block.team() == null ? "(팀명 없음)" : block.team();
+
+            if (block.connectId() == null) {
+                warnings.add("[%s] connect_id가 비어있어 건너뜀".formatted(teamLabel));
+                continue;
+            }
+
+            Optional<UserEntity> userOpt = userRepository.findByEmail(block.connectId());
+            if (userOpt.isEmpty()) {
+                warnings.add("[%s] 존재하지 않는 계정(connect_id=%s) - 전문가 계정을 먼저 등록해주세요."
+                        .formatted(teamLabel, block.connectId()));
+                continue;
+            }
+            UserEntity user = userOpt.get();
+
+            if (block.password() != null && !block.password().equals(user.getPassword())) {
+                warnings.add("[%s] 비밀번호가 등록된 계정 정보와 다릅니다(connect_id=%s) - 매칭은 그대로 진행했습니다."
+                        .formatted(teamLabel, block.connectId()));
+            }
+
+            UserYearRound userYearRound = getOrCreateUserYearRound(user, assessmentRound);
+            userYearRound.updateTeam(block.team());
+
+            List<Long> resolvedIds = new ArrayList<>();
+            for (String code : block.dataCodes()) {
+                IndustryData data = dataByCode.get(code);
+                if (data == null) {
+                    warnings.add("[%s] 존재하지 않는 데이터 아이디: %s".formatted(teamLabel, code));
+                    continue;
+                }
+                resolvedIds.add(data.getId());
+            }
+
+            AssignmentDiff diff = calculateDiff(userYearRound, new DataIdsRequest(resolvedIds));
+            deleteRemovedAssignments(userYearRound, diff);
+            addNewAssignments(userYearRound, diff, year);
+
+            added += diff.toAdd().size();
+            removed += diff.toRemove().size();
+            teamsProcessed++;
+        }
+
+        return new AssignmentImportResultResponse(teamsProcessed, added, removed, warnings);
     }
 
     /*

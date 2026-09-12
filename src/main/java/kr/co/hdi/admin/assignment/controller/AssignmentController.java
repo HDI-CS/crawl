@@ -3,6 +3,7 @@ package kr.co.hdi.admin.assignment.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.co.hdi.admin.assignment.dto.request.AssignmentDataRequest;
+import kr.co.hdi.admin.assignment.dto.response.AssignmentImportResultResponse;
 import kr.co.hdi.admin.assignment.dto.response.AssignmentResponse;
 import kr.co.hdi.admin.assignment.service.AssignmentService;
 import kr.co.hdi.admin.assignment.service.AssignmentServiceResolver;
@@ -16,6 +17,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -98,6 +100,18 @@ public class AssignmentController {
         AssignmentService service = resolver.resolve(type);
         service.createDatasetAssignment(assessmentRoundId, request);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping(value = "/assessment/{assessmentRoundId}/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "전문가-데이터셋 매칭 엑셀 업로드")
+    public ResponseEntity<AssignmentImportResultResponse> importDatasetAssignment(
+            @PathVariable DomainType type,
+            @PathVariable Long assessmentRoundId,
+            @RequestParam("file") MultipartFile file) {
+
+        AssignmentService service = resolver.resolve(type);
+        AssignmentImportResultResponse response = service.importDatasetAssignmentExcel(assessmentRoundId, file);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @GetMapping("/assessment/{assessmentRoundId}/export")
